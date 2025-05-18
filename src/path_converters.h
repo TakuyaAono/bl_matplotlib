@@ -14,33 +14,33 @@
 #include "agg_conv_segmentator.h"
 
 /*
- This file contains a number of vertex converters that modify
- paths. They all work as iterators, where the output is generated
- on-the-fly, and don't require a copy of the full data.
-
- Each class represents a discrete step in a "path-cleansing" pipeline.
- They are currently applied in the following order in the Agg backend:
-
-   1. Affine transformation (implemented in Agg, not here)
-
-   2. PathNanRemover: skips over segments containing non-finite numbers
-      by inserting MOVETO commands
-
-   3. PathClipper: Clips line segments to a given rectangle.  This is
-      helpful for data reduction, and also to avoid a limitation in
-      Agg where coordinates cannot be larger than 24-bit signed
-      integers.
-
-   4. PathSnapper: Rounds the path to the nearest center-pixels.
-      This makes rectilinear curves look much better.
-
-   5. PathSimplifier: Removes line segments from highly dense paths
-      that would not have an impact on their appearance.  Speeds up
-      rendering and reduces file sizes.
-
-   6. curve-to-line-segment conversion (implemented in Agg, not here)
-
-   7. stroking (implemented in Agg, not here)
+ * パス変換の主要な機能
+ *
+ * このファイルには、パスを修正する頂点コンバーターが含まれています。
+ * これらはすべてイテレーターとして機能し、出力はオンザフライで生成され、
+ * 完全なデータのコピーは必要ありません。
+ *
+ * 各クラスは「パスクリーニング」パイプラインの個別のステップを表します。
+ * これらは現在、AGGバックエンドで以下の順序で適用されています：
+ *
+ * 1. アフィン変換（AGGで実装、ここには含まれません）
+ *
+ * 2. PathNanRemover: NaNを含むセグメントをスキップし、
+ *    MOVETOコマンドを挿入します
+ *
+ * 3. PathClipper: 線分を指定された矩形にクリップします。
+ *    これはデータ削減に役立ち、またAGGの座標が24ビット符号付き整数を
+ *    超えることができないという制限を回避するのにも役立ちます。
+ *
+ * 4. PathSnapper: パスを最も近い中心ピクセルに丸めます。
+ *    これにより、直線的な曲線がより良く見えます。
+ *
+ * 5. PathSimplifier: 高密度パスから見た目に影響を与えない線分を削除します。
+ *    レンダリングを高速化し、ファイルサイズを削減します。
+ *
+ * 6. 曲線から線分への変換（AGGで実装、ここには含まれません）
+ *
+ * 7. ストローク（AGGで実装、ここには含まれません）
  */
 
 /************************************************************
@@ -729,56 +729,22 @@ class PathSimplifier : protected EmbeddedQueue<9>
             return m_source->vertex(x, y);
         }
 
-        /* idea: we can skip drawing many lines: we can combine
-           sequential parallel lines into a
-           single line instead of redrawing lines over the same
-           points.  The loop below works a bit like a state machine,
-           where what it does depends on what it did in the last
-           looping. To test whether sequential lines are close to
-           parallel, I calculate the distance moved perpendicular to
-           the last line. Once it gets too big, the lines cannot be
-           combined. */
-
-        /* This code was originally written by Allan Haldane and I
-           have modified to work in-place -- meaning not creating an
-           entirely new path list each time.  In order to do that
-           without too much additional code complexity, it keeps a
-           small queue around so that multiple points can be emitted
-           in a single call, and those points will be popped from the
-           queue in subsequent calls.  The following block will empty
-           the queue before proceeding to the main loop below.
-           -- Michael Droettboom */
-
-        /* This code was originally written by Allan Haldane and
-           updated by Michael Droettboom. I have modified it to
-           handle anti-parallel vectors. This is done essentially
-           the same way as parallel vectors, but requires a little
-           additional book-keeping to track whether or not we have
-           observed an anti-parallel vector during the current run.
-           -- Kevin Rose */
-
-        if (queue_pop(&cmd, x, y)) {
-            return cmd;
-        }
-
-        /* The main simplification loop.  The point is to consume only
-           as many points as necessary until something has been added
-           to the outbound queue, not to run through the entire path
-           in one go.  This eliminates the need to allocate and fill
-           an entire additional path array on each draw. */
+        /* メインの単純化ループ。
+           ポイントは、出力キューに何かが追加されるまでに必要な数のポイントのみを消費することであり、
+           一度にパス全体を実行することではありません。
+           これにより、各描画時に追加のパス配列全体を割り当てて埋める必要がなくなります。 */
         while ((cmd = m_source->vertex(x, y)) != agg::path_cmd_stop) {
-            /* if we are starting a new path segment, move to the first point
-               + init */
+            /* 新しいパスセグメントを開始する場合、最初のポイントに移動して初期化 */
 
             if (m_moveto || cmd == agg::path_cmd_move_to) {
-                /* m_moveto check is not generally needed because
-                   m_source generates an initial moveto; but it is
-                   retained for safety in case circumstances arise
-                   where this is not true. */
+                /* m_movetoチェックは一般的には必要ありません。
+                   m_sourceは初期のmovetoを生成するためですが、
+                   これが真でない状況が発生する可能性があるため、
+                   安全のために保持されています。 */
                 if (m_origdNorm2 != 0.0 && !m_after_moveto) {
-                    /* m_origdNorm2 is nonzero only if we have a
-                       vector; the m_after_moveto check ensures we
-                       push this vector to the queue only once. */
+                    /* m_origdNorm2はベクトルがある場合のみ非ゼロです。
+                       m_after_movetoチェックにより、
+                       このベクトルをキューに一度だけプッシュすることを保証します。 */
                     _push(x, y);
                 }
                 m_after_moveto = true;
@@ -798,7 +764,7 @@ class PathSimplifier : protected EmbeddedQueue<9>
                 m_dnorm2BackwardMax = 0.0;
                 m_clipped = true;
                 if (queue_nonempty()) {
-                    /* If we did a push, empty the queue now. */
+                    /* プッシュを行った場合、キューを空にします。 */
                     break;
                 }
                 continue;

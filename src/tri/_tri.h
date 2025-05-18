@@ -1,64 +1,54 @@
 /*
- * Unstructured triangular grid functions, particularly contouring.
+ * 非構造化三角形グリッド関数、特に等高線描画に関する処理
  *
- * There are two main classes: Triangulation and TriContourGenerator.
+ * 主に2つのクラスがあります：Triangulation（三角形分割）とTriContourGenerator（等高線生成器）
  *
- * Triangulation
+ * Triangulation（三角形分割）
  * -------------
- * Triangulation is an unstructured triangular grid with npoints and ntri
- * triangles.  It consists of point x and y coordinates, and information about
- * the triangulation stored in an integer array of shape (ntri,3) called
- * triangles.  Each triangle is represented by three point indices (in the
- * range 0 to npoints-1) that comprise the triangle, ordered anticlockwise.
- * There is an optional mask of length ntri which can be used to mask out
- * triangles and has the same result as removing those triangles from the
- * 'triangles' array.
+ * Triangulationはnpoints個の点とntri個の三角形からなる非構造化三角形グリッドです。
+ * 点のx座標とy座標、および三角形の情報（ntri×3の整数配列）で構成されています。
+ * 各三角形は3つの点インデックス（0からnpoints-1の範囲）で表され、反時計回りに順序付けられています。
+ * オプションでntriの長さのマスクを使用して三角形をマスクアウトすることができます。
  *
- * A particular edge of a triangulation is termed a TriEdge, which is a
- * triangle index and an edge index in the range 0 to 2.  TriEdge(tri,edge)
- * refers to the edge that starts at point index triangles(tri,edge) and ends
- * at point index triangles(tri,(edge+1)%3).
+ * 三角形分割の特定のエッジはTriEdgeと呼ばれ、三角形インデックスと0から2の範囲のエッジインデックスで構成されます。
+ * TriEdge(tri,edge)は、点インデックスtriangles(tri,edge)で始まり、
+ * 点インデックスtriangles(tri,(edge+1)%3)で終わるエッジを指します。
  *
- * Various derived fields are calculated when they are first needed.  The
- * triangle connectivity is stored in a neighbors array of shape (ntri,3) such
- * that neighbors(tri,edge) is the index of the triangle that adjoins the
- * TriEdge(tri,edge), or -1 if there is no such neighbor.
+ * 必要なときに計算される様々な派生フィールドがあります。
+ * 三角形の接続性は(ntri,3)の形状のneighbors配列に格納され、
+ * neighbors(tri,edge)はTriEdge(tri,edge)に隣接する三角形のインデックス、
+ * またはそのような隣接がない場合は-1です。
  *
- * A triangulation has one or more boundaries, each of which is a 1D array of
- * the TriEdges that comprise the boundary, in order following the boundary
- * with non-masked triangles on the left.
+ * 三角形分割には1つ以上の境界があり、それぞれは境界を構成するTriEdgeの1D配列で、
+ * 非マスク三角形を左側に置いて境界に沿って順序付けられています。
  *
- * TriContourGenerator
+ * TriContourGenerator（等高線生成器）
  * -------------------
- * A TriContourGenerator generates contours for a particular Triangulation.
- * The process followed is different for non-filled and filled contours, with
- * one and two contour levels respectively.  In both cases boundary contour
- * lines are found first, then interior lines.
+ * TriContourGeneratorは特定の三角形分割の等高線を生成します。
+ * 処理は非塗りつぶし等高線と塗りつぶし等高線で異なり、
+ * それぞれ1つと2つの等高線レベルを使用します。
+ * どちらの場合も、まず境界等高線が検出され、次に内部線が検出されます。
  *
- * Boundary lines start and end on a boundary.  They are found by traversing
- * the triangulation boundary edges until a suitable start point is found, and
- * then the contour line is followed across the interior of the triangulation
- * until it ends on another boundary edge.  For a non-filled contour this
- * completes a line, whereas a filled contour continues by following the
- * boundary around until either another boundary start point is found or the
- * start of the contour line is reached.  Filled contour generation stores
- * boolean flags to indicate which boundary edges have already been traversed
- * so that they are not dealt with twice.  Similar flags are used to indicate
- * which triangles have been used when following interior lines.
+ * 境界線は境界で始まり終わります。
+ * 三角形分割の境界エッジを走査して適切な開始点を見つけ、
+ * その後、等高線は三角形分割の内部を横切って別の境界エッジで終わるまで追跡されます。
+ * 非塗りつぶし等高線の場合、これで1本の線が完成しますが、
+ * 塗りつぶし等高線の場合は、別の境界開始点が見つかるか、
+ * 等高線の開始点に戻るまで境界に沿って続きます。
+ * 塗りつぶし等高線生成では、既に走査された境界エッジを示すブールフラグを保存し、
+ * 二重に処理されないようにします。
+ * 内部線の追跡時にも同様のフラグが使用されます。
  *
- * Interior lines do not intersect any boundaries.  They are found by
- * traversing all triangles that have not yet been visited until a suitable
- * starting point is found, and then the contour line is followed across the
- * interior of the triangulation until it returns to the start point.  For
- * filled contours this process is repeated for both lower and upper contour
- * levels, and the direction of traversal is reversed for upper contours.
+ * 内部線は境界と交差しません。
+ * まだ訪問されていない三角形を走査して適切な開始点を見つけ、
+ * その後、等高線は開始点に戻るまで三角形分割の内部を横切って追跡されます。
+ * 塗りつぶし等高線の場合、このプロセスは下位と上位の等高線レベルで繰り返され、
+ * 上位等高線では走査の方向が逆になります。
  *
- * Working out in which direction a contour line leaves a triangle uses the
- * a lookup table.  A triangle has three points, each of which has a z-value
- * which is either less than the contour level or not.  Hence there are 8
- * configurations to deal with, 2 of which do not have a contour line (all
- * points below or above (including the same as) the contour level) and 6 that
- * do.  See the function get_exit_edge for details.
+ * 等高線が三角形を出る方向を決定するには、ルックアップテーブルを使用します。
+ * 三角形には3つの点があり、それぞれの点は等高線レベルより小さいかそうでないかのz値を持ちます。
+ * したがって、8つの設定があり、そのうち2つは等高線を持たず（すべての点が等高線レベル以下または以上）、
+ * 6つは等高線を持ちます。詳細はget_exit_edge関数を参照してください。
  */
 #ifndef MPL_TRI_H
 #define MPL_TRI_H
