@@ -76,6 +76,7 @@ class Path:
         made up front in the constructor that will not change when the
         data changes.
     """
+
     code_type = np.uint8
 
     # Path codes

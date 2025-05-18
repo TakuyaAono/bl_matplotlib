@@ -131,6 +131,6 @@ plt.show()
 #
 # .. tags::
 #
-#    component: annotation
+#    component: annotate
 #    plot-type: line
 #    level: intermediate

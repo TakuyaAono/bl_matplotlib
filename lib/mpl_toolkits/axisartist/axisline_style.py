@@ -177,7 +177,8 @@ class AxislineStyle(_Style):
                 .. versionadded:: 3.7
             """
 
-            facecolor = mpl._val_or_rc(facecolor, 'axes.edgecolor')
+            if facecolor is None:
+                facecolor = mpl.rcParams['axes.edgecolor']
             self.size = size
             self._facecolor = facecolor
             super().__init__(size=size)

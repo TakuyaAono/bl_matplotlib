@@ -381,7 +381,7 @@ def draw_quiverkey_setzorder(fig, zorder=None):
 
 
 @pytest.mark.parametrize('zorder', [0, 2, 5, None])
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_quiverkey_zorder(fig_test, fig_ref, zorder):
     draw_quiverkey_zorder_argument(fig_test, zorder=zorder)
     draw_quiverkey_setzorder(fig_ref, zorder=zorder)

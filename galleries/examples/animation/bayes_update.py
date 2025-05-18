@@ -71,4 +71,4 @@ anim = FuncAnimation(fig, ud, init_func=ud.start, frames=100, interval=100, blit
 plt.show()
 
 # %%
-# .. tags:: component: animation, plot-type: line
+# .. tags:: animation, plot-type: line

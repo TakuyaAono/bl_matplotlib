@@ -327,10 +327,3 @@ tstart = time.time()
 
 plt.show()
 print('FPS: %f' % (animation.cnt/(time.time() - tstart)))
-
-#
-# %%
-# .. tags::
-#
-#    interactivity: event-handling
-#    purpose: fun

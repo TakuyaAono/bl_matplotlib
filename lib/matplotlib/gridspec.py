@@ -18,7 +18,6 @@ import numpy as np
 
 import matplotlib as mpl
 from matplotlib import _api, _pylab_helpers, _tight_layout
-from matplotlib._api import UNSET as _UNSET
 from matplotlib.transforms import Bbox
 
 _log = logging.getLogger(__name__)
@@ -367,8 +366,7 @@ class GridSpec(GridSpecBase):
 
     _AllowedKeys = ["left", "bottom", "right", "top", "wspace", "hspace"]
 
-    def update(self, *, left=_UNSET, bottom=_UNSET, right=_UNSET, top=_UNSET,
-               wspace=_UNSET, hspace=_UNSET):
+    def update(self, **kwargs):
         """
         Update the subplot parameters of the grid.
 
@@ -379,23 +377,15 @@ class GridSpec(GridSpecBase):
         ----------
         left, right, top, bottom : float or None, optional
             Extent of the subplots as a fraction of figure width or height.
-        wspace, hspace : float or None, optional
+        wspace, hspace : float, optional
             Spacing between the subplots as a fraction of the average subplot
             width / height.
         """
-        if left is not _UNSET:
-            self.left = left
-        if bottom is not _UNSET:
-            self.bottom = bottom
-        if right is not _UNSET:
-            self.right = right
-        if top is not _UNSET:
-            self.top = top
-        if wspace is not _UNSET:
-            self.wspace = wspace
-        if hspace is not _UNSET:
-            self.hspace = hspace
-
+        for k, v in kwargs.items():
+            if k in self._AllowedKeys:
+                setattr(self, k, v)
+            else:
+                raise AttributeError(f"{k} is an unknown keyword")
         for figmanager in _pylab_helpers.Gcf.figs.values():
             for ax in figmanager.canvas.figure.axes:
                 if ax.get_subplotspec() is not None:
@@ -750,22 +740,22 @@ class SubplotParams:
 
         Parameters
         ----------
-        left : float, optional
+        left : float
             The position of the left edge of the subplots,
             as a fraction of the figure width.
-        right : float, optional
+        right : float
             The position of the right edge of the subplots,
             as a fraction of the figure width.
-        bottom : float, optional
+        bottom : float
             The position of the bottom edge of the subplots,
             as a fraction of the figure height.
-        top : float, optional
+        top : float
             The position of the top edge of the subplots,
             as a fraction of the figure height.
-        wspace : float, optional
+        wspace : float
             The width of the padding between subplots,
             as a fraction of the average Axes width.
-        hspace : float, optional
+        hspace : float
             The height of the padding between subplots,
             as a fraction of the average Axes height.
         """
@@ -796,12 +786,3 @@ class SubplotParams:
             self.wspace = wspace
         if hspace is not None:
             self.hspace = hspace
-
-    def reset(self):
-        """Restore the subplot positioning parameters to the default rcParams values"""
-        for key in self.to_dict():
-            setattr(self, key, mpl.rcParams[f'figure.subplot.{key}'])
-
-    def to_dict(self):
-        """Return a copy of the subplot parameters as a dict."""
-        return self.__dict__.copy()

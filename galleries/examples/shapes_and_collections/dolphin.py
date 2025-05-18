@@ -11,6 +11,7 @@ and nodes using the `~.path.Path`, `~.patches.PathPatch` and
 import matplotlib.pyplot as plt
 import numpy as np
 
+import matplotlib.cm as cm
 from matplotlib.patches import Circle, PathPatch
 from matplotlib.path import Path
 from matplotlib.transforms import Affine2D
@@ -30,7 +31,7 @@ circle = Circle((0, 0), 1, facecolor='none',
 ax.add_patch(circle)
 
 im = plt.imshow(np.random.random((100, 100)),
-                origin='lower', cmap="winter",
+                origin='lower', cmap=cm.winter,
                 interpolation='spline36',
                 extent=(-1, 1, -1, 1))
 im.set_clip_path(circle)
@@ -119,9 +120,3 @@ plt.show()
 #    - `matplotlib.transforms`
 #    - `matplotlib.transforms.Affine2D`
 #    - `matplotlib.transforms.Affine2D.rotate_deg`
-#
-# .. tags::
-#
-#    component: patch
-#    styling: shape
-#    purpose: fun

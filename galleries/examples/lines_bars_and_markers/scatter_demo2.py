@@ -39,7 +39,6 @@ plt.show()
 # .. tags::
 #
 #    component: marker
-#    styling: color
-#    styling: colormap
-#    plot-type: scatter
+#    component: color
+#    plot-style: scatter
 #    level: beginner

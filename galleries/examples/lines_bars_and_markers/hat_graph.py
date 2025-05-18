@@ -81,6 +81,6 @@ plt.show()
 #
 # .. tags::
 #
-#    component: annotation
+#    component: annotate
 #    plot-type: bar
 #    level: beginner

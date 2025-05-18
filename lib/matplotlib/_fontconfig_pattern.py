@@ -9,11 +9,11 @@ A module for parsing and generating `fontconfig patterns`_.
 # there would have created cyclical dependency problems, because it also needs
 # to be available from `matplotlib.rcsetup` (for parsing matplotlibrc files).
 
-from functools import cache, lru_cache, partial
+from functools import lru_cache, partial
 import re
 
 from pyparsing import (
-    Group, Optional, ParseException, Regex, StringEnd, Suppress, ZeroOrMore, one_of)
+    Group, Optional, ParseException, Regex, StringEnd, Suppress, ZeroOrMore, oneOf)
 
 
 _family_punc = r'\\\-:,'
@@ -52,7 +52,7 @@ _CONSTANTS = {
 }
 
 
-@cache  # The parser instance is a singleton.
+@lru_cache  # The parser instance is a singleton.
 def _make_fontconfig_parser():
     def comma_separated(elem):
         return elem + ZeroOrMore(Suppress(",") + elem)
@@ -61,7 +61,7 @@ def _make_fontconfig_parser():
     size = Regex(r"([0-9]+\.?[0-9]*|\.[0-9]+)")
     name = Regex(r"[a-z]+")
     value = Regex(fr"([^{_value_punc}]|(\\[{_value_punc}]))*")
-    prop = Group((name + Suppress("=") + comma_separated(value)) | one_of(_CONSTANTS))
+    prop = Group((name + Suppress("=") + comma_separated(value)) | oneOf(_CONSTANTS))
     return (
         Optional(comma_separated(family)("families"))
         + Optional("-" + comma_separated(size)("sizes"))
@@ -82,11 +82,11 @@ def parse_fontconfig_pattern(pattern):
     """
     parser = _make_fontconfig_parser()
     try:
-        parse = parser.parse_string(pattern)
+        parse = parser.parseString(pattern)
     except ParseException as err:
         # explain becomes a plain method on pyparsing 3 (err.explain(0)).
         raise ValueError("\n" + ParseException.explain(err, 0)) from None
-    parser.reset_cache()
+    parser.resetCache()
     props = {}
     if "families" in parse:
         props["family"] = [*map(_family_unescape, parse["families"])]

@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib.cbook as cbook
+import matplotlib.cm as cm
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 
@@ -29,7 +30,7 @@ Z2 = np.exp(-(X - 1)**2 - (Y - 1)**2)
 Z = (Z1 - Z2) * 2
 
 fig, ax = plt.subplots()
-im = ax.imshow(Z, interpolation='bilinear', cmap="RdYlBu",
+im = ax.imshow(Z, interpolation='bilinear', cmap=cm.RdYlGn,
                origin='lower', extent=[-3, 3, -3, 3],
                vmax=abs(Z).max(), vmin=-abs(Z).max())
 
@@ -57,7 +58,7 @@ fig, ax = plt.subplot_mosaic([
 ax['hopper'].imshow(image)
 ax['hopper'].axis('off')  # clear x-axis and y-axis
 
-im = ax['mri'].imshow(A, cmap="hot", origin='upper', extent=extent)
+im = ax['mri'].imshow(A, cmap=plt.cm.hot, origin='upper', extent=extent)
 
 markers = [(15.9, 14.5), (16.8, 15)]
 x, y = zip(*markers)
@@ -162,7 +163,7 @@ patch = PathPatch(path, facecolor='none')
 fig, ax = plt.subplots()
 ax.add_patch(patch)
 
-im = ax.imshow(Z, interpolation='bilinear', cmap="gray",
+im = ax.imshow(Z, interpolation='bilinear', cmap=cm.gray,
                origin='lower', extent=[-3, 3, -3, 3],
                clip_path=patch, clip_on=True)
 im.set_clip_path(patch)

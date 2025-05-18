@@ -191,7 +191,7 @@ def test_errorbar_mixed_units():
     fig.canvas.draw()
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_subclass(fig_test, fig_ref):
     class subdate(datetime):
         pass

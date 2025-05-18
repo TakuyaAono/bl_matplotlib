@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from matplotlib.artist import Artist
+import matplotlib.cm as cm
 from matplotlib.colors import LightSource
 import matplotlib.transforms as mtransforms
 
@@ -178,7 +179,7 @@ def filtered_text(ax):
 
     # draw
     ax.imshow(Z, interpolation='bilinear', origin='lower',
-              cmap="gray", extent=(-3, 3, -2, 2), aspect='auto')
+              cmap=cm.gray, extent=(-3, 3, -2, 2), aspect='auto')
     levels = np.arange(-1.2, 1.6, 0.2)
     CS = ax.contour(Z, levels,
                     origin='lower',

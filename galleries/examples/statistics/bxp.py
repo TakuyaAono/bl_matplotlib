@@ -64,7 +64,7 @@ plt.show()
 
 # %%
 #
-# .. tags:: plot-type: specialty, domain: statistics
+# .. tags:: plot-type: speciality, domain: statistics
 #
 # .. admonition:: References
 #

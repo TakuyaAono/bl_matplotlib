@@ -206,9 +206,9 @@ class FuncAnimation(TimedAnimation):
     def __init__(
         self,
         fig: Figure,
-        func: Callable[..., Iterable[Artist] | None],
+        func: Callable[..., Iterable[Artist]],
         frames: Iterable | int | Callable[[], Generator] | None = ...,
-        init_func: Callable[[], Iterable[Artist] | None] | None = ...,
+        init_func: Callable[[], Iterable[Artist]] | None = ...,
         fargs: tuple[Any, ...] | None = ...,
         save_count: int | None = ...,
         *,

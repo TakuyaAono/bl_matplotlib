@@ -52,5 +52,5 @@ plt.show()
 # .. tags::
 #
 #    styling: linestyle
-#    plot-type: line
+#    plot-style: line
 #    level: beginner

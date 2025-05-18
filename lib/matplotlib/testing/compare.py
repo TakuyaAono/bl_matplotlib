@@ -97,16 +97,6 @@ class _Converter:
                 return bytes(buf)
 
 
-class _MagickConverter:
-    def __call__(self, orig, dest):
-        try:
-            subprocess.run(
-                [mpl._get_executable_info("magick").executable, orig, dest],
-                check=True)
-        except subprocess.CalledProcessError as e:
-            raise _ConverterError() from e
-
-
 class _GSConverter(_Converter):
     def __call__(self, orig, dest):
         if not self._proc:
@@ -239,12 +229,6 @@ class _SVGWithMatplotlibFontsConverter(_SVGConverter):
 
 def _update_converter():
     try:
-        mpl._get_executable_info("magick")
-    except mpl.ExecutableNotFoundError:
-        pass
-    else:
-        converter['gif'] = _MagickConverter()
-    try:
         mpl._get_executable_info("gs")
     except mpl.ExecutableNotFoundError:
         pass
@@ -314,7 +298,7 @@ def convert(filename, cache):
         _log.debug("For %s: converting to png.", filename)
         convert = converter[path.suffix[1:]]
         if path.suffix == ".svg":
-            contents = path.read_text(encoding="utf-8")
+            contents = path.read_text()
             # NOTE: This check should be kept in sync with font styling in
             # `lib/matplotlib/backends/backend_svg.py`. If it changes, then be sure to
             # re-generate any SVG test files using this mode, or else such tests will
@@ -411,7 +395,7 @@ def compare_images(expected, actual, tol, in_decorator=False):
     Compare two "image" files checking differences within a tolerance.
 
     The two given filenames may point to files which are convertible to
-    PNG via the `!converter` dictionary. The underlying RMS is calculated
+    PNG via the `.converter` dictionary. The underlying RMS is calculated
     with the `.calculate_rms` function.
 
     Parameters

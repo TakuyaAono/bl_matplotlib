@@ -98,7 +98,7 @@ def test_polar_twice():
     assert len(fig.axes) == 1, 'More than one polar Axes created.'
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_polar_wrap(fig_test, fig_ref):
     ax = fig_test.add_subplot(projection="polar")
     ax.plot(np.deg2rad([179, -179]), [0.2, 0.1])
@@ -108,7 +108,7 @@ def test_polar_wrap(fig_test, fig_ref):
     ax.plot(np.deg2rad([2, 358]), [0.2, 0.1])
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_polar_units_1(fig_test, fig_ref):
     import matplotlib.testing.jpl_units as units
     units.register()
@@ -123,7 +123,7 @@ def test_polar_units_1(fig_test, fig_ref):
     ax.set(xlabel="deg")
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_polar_units_2(fig_test, fig_ref):
     import matplotlib.testing.jpl_units as units
     units.register()
@@ -260,7 +260,7 @@ def test_polar_theta_limits():
                 steps=[1, 2, 2.5, 5, 10])
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_polar_rlim(fig_test, fig_ref):
     ax = fig_test.subplots(subplot_kw={'polar': True})
     ax.set_rlim(top=10)
@@ -271,7 +271,7 @@ def test_polar_rlim(fig_test, fig_ref):
     ax.set_rmin(.5)
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_polar_rlim_bottom(fig_test, fig_ref):
     ax = fig_test.subplots(subplot_kw={'polar': True})
     ax.set_rlim(bottom=[.5, 10])
@@ -331,7 +331,7 @@ def test_get_tightbbox_polar():
         bb.extents, [107.7778,  29.2778, 539.7847, 450.7222], rtol=1e-03)
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_polar_interpolation_steps_constant_r(fig_test, fig_ref):
     # Check that an extra half-turn doesn't make any difference -- modulo
     # antialiasing, which we disable here.
@@ -345,7 +345,7 @@ def test_polar_interpolation_steps_constant_r(fig_test, fig_ref):
           .bar([0], [1], -2*np.pi, edgecolor="none", antialiased=False))
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_polar_interpolation_steps_variable_r(fig_test, fig_ref):
     l, = fig_test.add_subplot(projection="polar").plot([0, np.pi/2], [1, 2])
     l.get_path()._interpolation_steps = 100
@@ -393,7 +393,7 @@ def test_axvspan():
     assert span.get_path()._interpolation_steps > 1
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_remove_shared_polar(fig_ref, fig_test):
     # Removing shared polar axes used to crash.  Test removing them, keeping in
     # both cases just the lower left axes of a grid to avoid running into a
@@ -506,23 +506,3 @@ def test_polar_errorbar(order):
         ax.errorbar(theta, r, xerr=0.1, yerr=0.1, capsize=7, fmt="o", c="seagreen")
         ax.set_theta_zero_location("N")
         ax.set_theta_direction(-1)
-
-
-def test_radial_limits_behavior():
-    # r=0 is kept as limit if positive data and ticks are used
-    # negative ticks or data result in negative limits
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='polar')
-    assert ax.get_ylim() == (0, 1)
-    # upper limit is expanded to include the ticks, but lower limit stays at 0
-    ax.set_rticks([1, 2, 3, 4])
-    assert ax.get_ylim() == (0, 4)
-    # upper limit is autoscaled to data, but lower limit limit stays 0
-    ax.plot([1, 2], [1, 2])
-    assert ax.get_ylim() == (0, 2)
-    # negative ticks also expand the negative limit
-    ax.set_rticks([-1, 0, 1, 2])
-    assert ax.get_ylim() == (-1, 2)
-    # negative data also autoscales to negative limits
-    ax.plot([1, 2], [-1, -2])
-    assert ax.get_ylim() == (-2, 2)

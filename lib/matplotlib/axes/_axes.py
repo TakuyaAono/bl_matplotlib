@@ -168,8 +168,11 @@ class Axes(_AxesBase):
             Other keyword arguments are text properties, see `.Text` for a list
             of valid text properties.
         """
-        loc = mpl._val_or_rc(loc, 'axes.titlelocation').lower()
-        y = mpl._val_or_rc(y, 'axes.titley')
+        if loc is None:
+            loc = mpl.rcParams['axes.titlelocation']
+
+        if y is None:
+            y = mpl.rcParams['axes.titley']
         if y is None:
             y = 1.0
         else:
@@ -179,16 +182,18 @@ class Axes(_AxesBase):
         titles = {'left': self._left_title,
                   'center': self.title,
                   'right': self._right_title}
-        title = _api.check_getitem(titles, loc=loc)
+        title = _api.check_getitem(titles, loc=loc.lower())
         default = {
             'fontsize': mpl.rcParams['axes.titlesize'],
             'fontweight': mpl.rcParams['axes.titleweight'],
             'verticalalignment': 'baseline',
-            'horizontalalignment': loc}
+            'horizontalalignment': loc.lower()}
         titlecolor = mpl.rcParams['axes.titlecolor']
         if not cbook._str_lower_equal(titlecolor, 'auto'):
             default["color"] = titlecolor
-        self._set_title_offset_trans(float(mpl._val_or_rc(pad, 'axes.titlepad')))
+        if pad is None:
+            pad = mpl.rcParams['axes.titlepad']
+        self._set_title_offset_trans(float(pad))
         title.set_text(label)
         title.update(default)
         if fontdict is not None:
@@ -347,7 +352,7 @@ class Axes(_AxesBase):
             Lower-left corner of inset Axes, and its width and height.
 
         transform : `.Transform`
-            Defaults to `!ax.transAxes`, i.e. the units of *rect* are in
+            Defaults to `ax.transAxes`, i.e. the units of *rect* are in
             Axes-relative coordinates.
 
         projection : {None, 'aitoff', 'hammer', 'lambert', 'mollweide', \
@@ -435,7 +440,7 @@ class Axes(_AxesBase):
 
         transform : `.Transform`
             Transform for the rectangle coordinates. Defaults to
-            ``ax.transData``, i.e. the units of *rect* are in the Axes' data
+            ``ax.transAxes``, i.e. the units of *rect* are in Axes-relative
             coordinates.
 
         facecolor : :mpltype:`color`, default: 'none'
@@ -1778,6 +1783,87 @@ class Axes(_AxesBase):
             self._request_autoscale_view("y")
         return lines
 
+    @_api.deprecated("3.9", alternative="plot")
+    @_preprocess_data(replace_names=["x", "y"], label_namer="y")
+    @_docstring.interpd
+    def plot_date(self, x, y, fmt='o', tz=None, xdate=True, ydate=False,
+                  **kwargs):
+        """
+        Plot coercing the axis to treat floats as dates.
+
+        .. deprecated:: 3.9
+
+            This method exists for historic reasons and will be removed in version 3.11.
+
+            - ``datetime``-like data should directly be plotted using
+              `~.Axes.plot`.
+            -  If you need to plot plain numeric data as :ref:`date-format` or
+               need to set a timezone, call ``ax.xaxis.axis_date`` /
+               ``ax.yaxis.axis_date`` before `~.Axes.plot`. See
+               `.Axis.axis_date`.
+
+        Similar to `.plot`, this plots *y* vs. *x* as lines or markers.
+        However, the axis labels are formatted as dates depending on *xdate*
+        and *ydate*.  Note that `.plot` will work with `datetime` and
+        `numpy.datetime64` objects without resorting to this method.
+
+        Parameters
+        ----------
+        x, y : array-like
+            The coordinates of the data points. If *xdate* or *ydate* is
+            *True*, the respective values *x* or *y* are interpreted as
+            :ref:`Matplotlib dates <date-format>`.
+
+        fmt : str, optional
+            The plot format string. For details, see the corresponding
+            parameter in `.plot`.
+
+        tz : timezone string or `datetime.tzinfo`, default: :rc:`timezone`
+            The time zone to use in labeling dates.
+
+        xdate : bool, default: True
+            If *True*, the *x*-axis will be interpreted as Matplotlib dates.
+
+        ydate : bool, default: False
+            If *True*, the *y*-axis will be interpreted as Matplotlib dates.
+
+        Returns
+        -------
+        list of `.Line2D`
+            Objects representing the plotted data.
+
+        Other Parameters
+        ----------------
+        data : indexable object, optional
+            DATA_PARAMETER_PLACEHOLDER
+        **kwargs
+            Keyword arguments control the `.Line2D` properties:
+
+            %(Line2D:kwdoc)s
+
+        See Also
+        --------
+        matplotlib.dates : Helper functions on dates.
+        matplotlib.dates.date2num : Convert dates to num.
+        matplotlib.dates.num2date : Convert num to dates.
+        matplotlib.dates.drange : Create an equally spaced sequence of dates.
+
+        Notes
+        -----
+        If you are using custom date tickers and formatters, it may be
+        necessary to set the formatters/locators after the call to
+        `.plot_date`. `.plot_date` will set the default tick locator to
+        `.AutoDateLocator` (if the tick locator is not already set to a
+        `.DateLocator` instance) and the default tick formatter to
+        `.AutoDateFormatter` (if the tick formatter is not already set to a
+        `.DateFormatter` instance).
+        """
+        if xdate:
+            self.xaxis_date(tz)
+        if ydate:
+            self.yaxis_date(tz)
+        return self.plot(x, y, fmt, **kwargs)
+
     # @_preprocess_data() # let 'plot' do the unpacking..
     @_docstring.interpd
     def loglog(self, *args, **kwargs):
@@ -2493,27 +2579,10 @@ class Axes(_AxesBase):
             height = self._convert_dx(height, y0, y, self.convert_yunits)
             if yerr is not None:
                 yerr = self._convert_dx(yerr, y0, y, self.convert_yunits)
-        try:
-            x, height, width, y, linewidth, hatch = np.broadcast_arrays(
-                # Make args iterable too.
-                np.atleast_1d(x), height, width, y, linewidth, hatch
-            )
-        except ValueError as e:
-            arg_map = {
-                "arg 0": "'x'",
-                "arg 1": "'height'",
-                "arg 2": "'width'",
-                "arg 3": "'y'",
-                "arg 4": "'linewidth'",
-                "arg 5": "'hatch'"
-            }
-            error_message = str(e)
-            for arg, name in arg_map.items():
-                error_message = error_message.replace(arg, name)
-            if error_message != str(e):
-                raise ValueError(error_message) from e
-            else:
-                raise
+
+        x, height, width, y, linewidth, hatch = np.broadcast_arrays(
+            # Make args iterable too.
+            np.atleast_1d(x), height, width, y, linewidth, hatch)
 
         # Now that units have been converted, set the tick locations.
         if orientation == 'vertical':
@@ -2803,11 +2872,8 @@ class Axes(_AxesBase):
               (useful for stacked bars, i.e.,
               :doc:`/gallery/lines_bars_and_markers/bar_label_demo`)
 
-        padding : float or array-like, default: 0
+        padding : float, default: 0
             Distance of label from the end of the bar, in points.
-            If an array-like is provided, the padding values are applied
-            to each label individually. Must have the same length as container.
-            .. versionadded:: 3.11
 
         **kwargs
             Any remaining keyword arguments are passed through to
@@ -2857,18 +2923,8 @@ class Axes(_AxesBase):
 
         annotations = []
 
-        if np.iterable(padding):
-            # if padding iterable, check length
-            padding = np.asarray(padding)
-            if len(padding) != len(bars):
-                raise ValueError(
-                    f"padding must be of length {len(bars)} when passed as a sequence")
-        else:
-            # single value, apply to all labels
-            padding = [padding] * len(bars)
-
-        for bar, err, dat, lbl, pad in itertools.zip_longest(
-                bars, errs, datavalues, labels, padding
+        for bar, err, dat, lbl in itertools.zip_longest(
+                bars, errs, datavalues, labels
         ):
             (x0, y0), (x1, y1) = bar.get_bbox().get_points()
             xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
@@ -2908,10 +2964,10 @@ class Axes(_AxesBase):
 
             if orientation == "vertical":
                 y_direction = -1 if y_inverted else 1
-                xytext = 0, y_direction * sign(dat) * pad
+                xytext = 0, y_direction * sign(dat) * padding
             else:  # horizontal
                 x_direction = -1 if x_inverted else 1
-                xytext = x_direction * sign(dat) * pad, 0
+                xytext = x_direction * sign(dat) * padding, 0
 
             if label_type == "center":
                 ha, va = "center", "center"
@@ -3126,7 +3182,8 @@ class Axes(_AxesBase):
             markerfmt = "o"
         if markerfmt == '':
             markerfmt = ' '  # = empty line style; '' would resolve rcParams
-        markerstyle, markermarker, markercolor = _process_plot_format(markerfmt)
+        markerstyle, markermarker, markercolor = \
+            _process_plot_format(markerfmt)
         if markermarker is None:
             markermarker = 'o'
         if markerstyle is None:
@@ -3141,7 +3198,8 @@ class Axes(_AxesBase):
         basestyle, basemarker, basecolor = _process_plot_format(basefmt)
 
         # New behaviour in 3.1 is to use a LineCollection for the stemlines
-        linestyle = mpl._val_or_rc(linestyle, 'lines.linestyle')
+        if linestyle is None:
+            linestyle = mpl.rcParams['lines.linestyle']
         xlines = self.vlines if orientation == "vertical" else self.hlines
         stemlines = xlines(
             locs, bottom, heads,
@@ -3165,8 +3223,6 @@ class Axes(_AxesBase):
         baseline, = self.plot(baseline_x, baseline_y,
                               color=basecolor, linestyle=basestyle,
                               marker=basemarker, label="_nolegend_")
-        baseline.get_path()._interpolation_steps = \
-            mpl.axis.GRIDLINE_INTERPOLATION_STEPS
 
         stem_container = StemContainer((markerline, stemlines, baseline),
                                        label=label)
@@ -3303,13 +3359,7 @@ class Axes(_AxesBase):
         if np.any(x < 0):
             raise ValueError("Wedge sizes 'x' must be non negative values")
 
-        if not np.all(np.isfinite(x)):
-            raise ValueError('Wedge sizes must be finite numbers')
-
         sx = x.sum()
-
-        if sx == 0:
-            raise ValueError('All wedge sizes are zero')
 
         if normalize:
             x = x / sx
@@ -3466,8 +3516,7 @@ class Axes(_AxesBase):
     def errorbar(self, x, y, yerr=None, xerr=None,
                  fmt='', ecolor=None, elinewidth=None, capsize=None,
                  barsabove=False, lolims=False, uplims=False,
-                 xlolims=False, xuplims=False, errorevery=1,
-                 capthick=None, elinestyle=None,
+                 xlolims=False, xuplims=False, errorevery=1, capthick=None,
                  **kwargs):
         """
         Plot y versus x as lines and/or markers with attached errorbars.
@@ -3514,12 +3563,6 @@ class Axes(_AxesBase):
         elinewidth : float, default: None
             The linewidth of the errorbar lines. If None, the linewidth of
             the current style is used.
-
-        elinestyle : str or tuple, default: 'solid'
-           The linestyle of the errorbar lines.
-           Valid values for linestyles include {'-', '--', '-.',
-            ':', '', (offset, on-off-seq)}. See `.Line2D.set_linestyle` for a
-            complete description.
 
         capsize : float, default: :rc:`errorbar.capsize`
             The length of the error bar caps in points.
@@ -3722,12 +3765,10 @@ class Axes(_AxesBase):
             if key in kwargs:
                 eb_lines_style[key] = kwargs[key]
 
-        if elinestyle is not None:
-            eb_lines_style['linestyle'] = elinestyle
-
         # Make the style dict for caps (the "hats").
         eb_cap_style = {**base_style, 'linestyle': 'none'}
-        capsize = mpl._val_or_rc(capsize, "errorbar.capsize")
+        if capsize is None:
+            capsize = mpl.rcParams["errorbar.capsize"]
         if capsize > 0:
             eb_cap_style['markersize'] = 2. * capsize
         if capthick is not None:
@@ -3915,6 +3956,8 @@ class Axes(_AxesBase):
             .. deprecated:: 3.11
                 Use *orientation* instead.
 
+                This is a pending deprecation for 3.10, with full deprecation
+                in 3.11 and removal in 3.13.
                 If this is given during the deprecation period, it overrides
                 the *orientation* parameter.
 
@@ -4084,18 +4127,27 @@ class Axes(_AxesBase):
         """
 
         # Missing arguments default to rcParams.
-        whis = mpl._val_or_rc(whis, 'boxplot.whiskers')
-        bootstrap = mpl._val_or_rc(bootstrap, 'boxplot.bootstrap')
+        if whis is None:
+            whis = mpl.rcParams['boxplot.whiskers']
+        if bootstrap is None:
+            bootstrap = mpl.rcParams['boxplot.bootstrap']
 
         bxpstats = cbook.boxplot_stats(x, whis=whis, bootstrap=bootstrap,
                                        labels=tick_labels, autorange=autorange)
-        notch = mpl._val_or_rc(notch, 'boxplot.notch')
-        patch_artist = mpl._val_or_rc(patch_artist, 'boxplot.patchartist')
-        meanline = mpl._val_or_rc(meanline, 'boxplot.meanline')
-        showmeans = mpl._val_or_rc(showmeans, 'boxplot.showmeans')
-        showcaps = mpl._val_or_rc(showcaps, 'boxplot.showcaps')
-        showbox = mpl._val_or_rc(showbox, 'boxplot.showbox')
-        showfliers = mpl._val_or_rc(showfliers, 'boxplot.showfliers')
+        if notch is None:
+            notch = mpl.rcParams['boxplot.notch']
+        if patch_artist is None:
+            patch_artist = mpl.rcParams['boxplot.patchartist']
+        if meanline is None:
+            meanline = mpl.rcParams['boxplot.meanline']
+        if showmeans is None:
+            showmeans = mpl.rcParams['boxplot.showmeans']
+        if showcaps is None:
+            showcaps = mpl.rcParams['boxplot.showcaps']
+        if showbox is None:
+            showbox = mpl.rcParams['boxplot.showbox']
+        if showfliers is None:
+            showfliers = mpl.rcParams['boxplot.showfliers']
 
         if boxprops is None:
             boxprops = {}
@@ -4253,6 +4305,8 @@ class Axes(_AxesBase):
             .. deprecated:: 3.11
                 Use *orientation* instead.
 
+                This is a pending deprecation for 3.10, with full deprecation
+                in 3.11 and removal in 3.13.
                 If this is given during the deprecation period, it overrides
                 the *orientation* parameter.
 
@@ -4392,6 +4446,7 @@ class Axes(_AxesBase):
                 "3.11",
                 name="vert: bool",
                 alternative="orientation: {'vertical', 'horizontal'}",
+                pending=True,
             )
         if vert is False:
             orientation = 'horizontal'
@@ -4914,18 +4969,13 @@ class Axes(_AxesBase):
         scales = s   # Renamed for readability below.
 
         # load default marker from rcParams
-        marker = mpl._val_or_rc(marker, 'scatter.marker')
+        if marker is None:
+            marker = mpl.rcParams['scatter.marker']
 
         if isinstance(marker, mmarkers.MarkerStyle):
             marker_obj = marker
         else:
             marker_obj = mmarkers.MarkerStyle(marker)
-        if cbook._str_equal(marker_obj.get_marker(), ","):
-            _api.warn_external(
-                "The pixel maker ',' is not supported on scatter(); using "
-                "a finite-sized square instead, which is not necessarily 1 pixel in "
-                "size. Use the square marker 's' instead to suppress this warning."
-            )
 
         path = marker_obj.get_path().transformed(
             marker_obj.get_transform())
@@ -6250,8 +6300,30 @@ class Axes(_AxesBase):
         collection._check_exclusionary_keywords(colorizer, vmin=vmin, vmax=vmax)
         collection._scale_norm(norm, vmin, vmax)
 
-        coords = coords.reshape(-1, 2)  # flatten the grid structure; keep x, y
-        self._update_pcolor_lims(collection, coords)
+        # Transform from native to data coordinates?
+        t = collection._transform
+        if (not isinstance(t, mtransforms.Transform) and
+                hasattr(t, '_as_mpl_transform')):
+            t = t._as_mpl_transform(self.axes)
+
+        if t and any(t.contains_branch_seperately(self.transData)):
+            trans_to_data = t - self.transData
+            pts = np.vstack([x, y]).T.astype(float)
+            transformed_pts = trans_to_data.transform(pts)
+            x = transformed_pts[..., 0]
+            y = transformed_pts[..., 1]
+
+        self.add_collection(collection, autolim=False)
+
+        minx = np.min(x)
+        maxx = np.max(x)
+        miny = np.min(y)
+        maxy = np.max(y)
+        collection.sticky_edges.x[:] = [minx, maxx]
+        collection.sticky_edges.y[:] = [miny, maxy]
+        corners = (minx, miny), (maxx, maxy)
+        self.update_datalim(corners)
+        self._request_autoscale_view()
         return collection
 
     @_preprocess_data()
@@ -6445,7 +6517,9 @@ class Axes(_AxesBase):
         `~.Axes.pcolormesh`, which is not available with `~.Axes.pcolor`.
 
         """
-        shading = mpl._val_or_rc(shading, 'pcolor.shading').lower()
+        if shading is None:
+            shading = mpl.rcParams['pcolor.shading']
+        shading = shading.lower()
         kwargs.setdefault('edgecolors', 'none')
 
         X, Y, C, shading = self._pcolorargs('pcolormesh', *args,
@@ -6461,13 +6535,7 @@ class Axes(_AxesBase):
         collection._scale_norm(norm, vmin, vmax)
 
         coords = coords.reshape(-1, 2)  # flatten the grid structure; keep x, y
-        self._update_pcolor_lims(collection, coords)
-        return collection
 
-    def _update_pcolor_lims(self, collection, coords):
-        """
-        Common code for updating lims in pcolor() and pcolormesh() methods.
-        """
         # Transform from native to data coordinates?
         t = collection._transform
         if (not isinstance(t, mtransforms.Transform) and
@@ -6484,8 +6552,10 @@ class Axes(_AxesBase):
         maxx, maxy = np.max(coords, axis=0)
         collection.sticky_edges.x[:] = [minx, maxx]
         collection.sticky_edges.y[:] = [miny, maxy]
-        self.update_datalim(coords)
+        corners = (minx, miny), (maxx, maxy)
+        self.update_datalim(corners)
         self._request_autoscale_view()
+        return collection
 
     @_preprocess_data()
     @_docstring.interpd
@@ -6956,7 +7026,8 @@ such objects
         if np.isscalar(x):
             x = [x]
 
-        bins = mpl._val_or_rc(bins, 'hist.bins')
+        if bins is None:
+            bins = mpl.rcParams['hist.bins']
 
         # Validate string inputs here to avoid cluttering subsequent code.
         _api.check_in_list(['bar', 'barstacked', 'step', 'stepfilled'],
@@ -8427,8 +8498,7 @@ such objects
     def violinplot(self, dataset, positions=None, vert=None,
                    orientation='vertical', widths=0.5, showmeans=False,
                    showextrema=True, showmedians=False, quantiles=None,
-                   points=100, bw_method=None, side='both',
-                   facecolor=None, linecolor=None):
+                   points=100, bw_method=None, side='both',):
         """
         Make a violin plot.
 
@@ -8487,24 +8557,13 @@ such objects
 
         bw_method : {'scott', 'silverman'} or float or callable, default: 'scott'
             The method used to calculate the estimator bandwidth.  If a
-            float, this will be used directly as `!kde.factor`.  If a
+            float, this will be used directly as `kde.factor`.  If a
             callable, it should take a `matplotlib.mlab.GaussianKDE` instance as
             its only parameter and return a float.
 
         side : {'both', 'low', 'high'}, default: 'both'
             'both' plots standard violins. 'low'/'high' only
             plots the side below/above the positions value.
-
-        facecolor : :mpltype:`color` or list of :mpltype:`color`, optional
-            If provided, will set the face color(s) of the violins.
-
-            .. versionadded:: 3.11
-
-        linecolor : :mpltype:`color` or list of :mpltype:`color`, optional
-            If provided, will set the line color(s) of the violins (the
-            horizontal and vertical spines and body edges).
-
-            .. versionadded:: 3.11
 
         data : indexable object, optional
             DATA_PARAMETER_PLACEHOLDER
@@ -8558,14 +8617,12 @@ such objects
         return self.violin(vpstats, positions=positions, vert=vert,
                            orientation=orientation, widths=widths,
                            showmeans=showmeans, showextrema=showextrema,
-                           showmedians=showmedians, side=side,
-                           facecolor=facecolor, linecolor=linecolor)
+                           showmedians=showmedians, side=side)
 
     @_api.make_keyword_only("3.10", "vert")
     def violin(self, vpstats, positions=None, vert=None,
                orientation='vertical', widths=0.5, showmeans=False,
-               showextrema=True, showmedians=False, side='both',
-               facecolor=None, linecolor=None):
+               showextrema=True, showmedians=False, side='both'):
         """
         Draw a violin plot from pre-computed statistics.
 
@@ -8637,17 +8694,6 @@ such objects
             'both' plots standard violins. 'low'/'high' only
             plots the side below/above the positions value.
 
-        facecolor : :mpltype:`color` or list of :mpltype:`color`, optional
-            If provided, will set the face color(s) of the violins.
-
-            .. versionadded:: 3.11
-
-        linecolor : :mpltype:`color` or list of :mpltype:`color`, optional
-            If provided, will set the line color(s) of the violins (the
-            horizontal and vertical spines and body edges).
-
-            .. versionadded:: 3.11
-
         Returns
         -------
         dict
@@ -8706,6 +8752,7 @@ such objects
                 "3.11",
                 name="vert: bool",
                 alternative="orientation: {'vertical', 'horizontal'}",
+                pending=True,
             )
             orientation = 'vertical' if vert else 'horizontal'
         _api.check_in_list(['horizontal', 'vertical'], orientation=orientation)
@@ -8730,45 +8777,12 @@ such objects
                      [0.25 if side in ['both', 'high'] else 0]] \
                           * np.array(widths) + positions
 
-        # Make a cycle of color to iterate through, using 'none' as fallback
-        def cycle_color(color, alpha=None):
-            rgba = mcolors.to_rgba_array(color, alpha=alpha)
-            color_cycler = itertools.chain(itertools.cycle(rgba),
-                                           itertools.repeat('none'))
-            color_list = []
-            for _ in range(N):
-                color_list.append(next(color_cycler))
-            return color_list
-
-        # Convert colors to chain (number of colors can be different from len(vpstats))
-        if facecolor is None or linecolor is None:
-            if not mpl.rcParams['_internal.classic_mode']:
-                next_color = self._get_lines.get_next_color()
-
-        if facecolor is not None:
-            facecolor = cycle_color(facecolor)
-        else:
-            default_facealpha = 0.3
-            # Use default colors if user doesn't provide them
-            if mpl.rcParams['_internal.classic_mode']:
-                facecolor = cycle_color('y', alpha=default_facealpha)
-            else:
-                facecolor = cycle_color(next_color, alpha=default_facealpha)
-
+        # Colors.
         if mpl.rcParams['_internal.classic_mode']:
-            # Classic mode uses patch.force_edgecolor=True, so we need to
-            # set the edgecolor to make sure it has an alpha.
-            body_edgecolor = ("k", 0.3)
+            fillcolor = 'y'
+            linecolor = 'r'
         else:
-            body_edgecolor = None
-
-        if linecolor is not None:
-            linecolor = cycle_color(linecolor)
-        else:
-            if mpl.rcParams['_internal.classic_mode']:
-                linecolor = cycle_color('r')
-            else:
-                linecolor = cycle_color(next_color)
+            fillcolor = linecolor = self._get_lines.get_next_color()
 
         # Check whether we are rendering vertically or horizontally
         if orientation == 'vertical':
@@ -8794,15 +8808,14 @@ such objects
 
         # Render violins
         bodies = []
-        bodies_zip = zip(vpstats, positions, widths, facecolor)
-        for stats, pos, width, facecolor in bodies_zip:
+        for stats, pos, width in zip(vpstats, positions, widths):
             # The 0.5 factor reflects the fact that we plot from v-p to v+p.
             vals = np.array(stats['vals'])
             vals = 0.5 * width * vals / vals.max()
             bodies += [fill(stats['coords'],
                             -vals + pos if side in ['both', 'low'] else pos,
                             vals + pos if side in ['both', 'high'] else pos,
-                            facecolor=facecolor, edgecolor=body_edgecolor)]
+                            facecolor=fillcolor, alpha=0.3)]
             means.append(stats['mean'])
             mins.append(stats['min'])
             maxes.append(stats['max'])

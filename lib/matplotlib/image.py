@@ -65,8 +65,8 @@ def composite_images(images, renderer, magnification=1.0):
     Parameters
     ----------
     images : list of Images
-        Each must have a `!make_image` method.  For each image,
-        `!can_composite` should return `True`, though this is not
+        Each must have a `make_image` method.  For each image,
+        `can_composite` should return `True`, though this is not
         enforced by this function.  Each image must have a purely
         affine transformation with no shear.
 
@@ -234,18 +234,17 @@ class _ImageBase(mcolorizer.ColorizingArtist):
     """
     Base class for images.
 
-    *interpolation* and *cmap* default to their rc settings.
+    interpolation and cmap default to their rc settings
 
-    *cmap* is a `.colors.Colormap` instance.
-    *norm* is a `.colors.Normalize` instance to map luminance to 0-1.
+    cmap is a colors.Colormap instance
+    norm is a colors.Normalize instance to map luminance to 0-1
 
-    *extent* is a ``(left, right, bottom, top)`` tuple in data coordinates, for
-    making image plots registered with data plots; the default is to label the
-    pixel centers with the zero-based row and column indices.
+    extent is data axes (left, right, bottom, top) for making image plots
+    registered with data plots.  Default is to label the pixel
+    centers with the zero-based row and column indices.
 
-    Additional kwargs are `.Artist` properties.
+    Additional kwargs are matplotlib.artist properties
     """
-
     zorder = 0
 
     def __init__(self, ax,
@@ -262,7 +261,8 @@ class _ImageBase(mcolorizer.ColorizingArtist):
                  **kwargs
                  ):
         super().__init__(self._get_colorizer(cmap, norm, colorizer))
-        origin = mpl._val_or_rc(origin, 'image.origin')
+        if origin is None:
+            origin = mpl.rcParams['image.origin']
         _api.check_in_list(["upper", "lower"], origin=origin)
         self.origin = origin
         self.set_filternorm(filternorm)
@@ -439,8 +439,6 @@ class _ImageBase(mcolorizer.ColorizingArtist):
             if not (A.ndim == 2 or A.ndim == 3 and A.shape[-1] in (3, 4)):
                 raise ValueError(f"Invalid shape {A.shape} for image data")
 
-            float_rgba_in = A.ndim == 3 and A.shape[-1] == 4 and A.dtype.kind == 'f'
-
             # if antialiased, this needs to change as window sizes
             # change:
             interpolation_stage = self._interpolation_stage
@@ -498,43 +496,37 @@ class _ImageBase(mcolorizer.ColorizingArtist):
                     out_alpha *= _resample(self, alpha, out_shape, t, resample=True)
                 # mask and run through the norm
                 resampled_masked = np.ma.masked_array(A_resampled, out_mask)
-                res = self.norm(resampled_masked)
+                output = self.norm(resampled_masked)
             else:
                 if A.ndim == 2:  # interpolation_stage = 'rgba'
                     self.norm.autoscale_None(A)
                     A = self.to_rgba(A)
-                if A.dtype == np.uint8:
-                    # uint8 is too imprecise for premultiplied alpha roundtrips.
-                    A = np.divide(A, 0xff, dtype=np.float32)
                 alpha = self.get_alpha()
-                post_apply_alpha = False
                 if alpha is None:  # alpha parameter not specified
                     if A.shape[2] == 3:  # image has no alpha channel
-                        A = np.dstack([A, np.ones(A.shape[:2])])
+                        output_alpha = 255 if A.dtype == np.uint8 else 1.0
+                    else:
+                        output_alpha = _resample(  # resample alpha channel
+                            self, A[..., 3], out_shape, t)
+                    output = _resample(  # resample rgb channels
+                        self, _rgb_to_rgba(A[..., :3]), out_shape, t)
                 elif np.ndim(alpha) > 0:  # Array alpha
                     # user-specified array alpha overrides the existing alpha channel
-                    A = np.dstack([A[..., :3], alpha])
+                    output_alpha = _resample(self, alpha, out_shape, t)
+                    output = _resample(
+                        self, _rgb_to_rgba(A[..., :3]), out_shape, t)
                 else:  # Scalar alpha
                     if A.shape[2] == 3:  # broadcast scalar alpha
-                        A = np.dstack([A, np.full(A.shape[:2], alpha, np.float32)])
+                        output_alpha = (255 * alpha) if A.dtype == np.uint8 else alpha
                     else:  # or apply scalar alpha to existing alpha channel
-                        post_apply_alpha = True
-                # Resample in premultiplied alpha space.  (TODO: Consider
-                # implementing premultiplied-space resampling in
-                # span_image_resample_rgba_affine::generate?)
-                if float_rgba_in and np.ndim(alpha) == 0 and np.any(A[..., 3] < 1):
-                    # Do not modify original RGBA input
-                    A = A.copy()
-                A[..., :3] *= A[..., 3:]
-                res = _resample(self, A, out_shape, t)
-                np.divide(res[..., :3], res[..., 3:], out=res[..., :3],
-                            where=res[..., 3:] != 0)
-                if post_apply_alpha:
-                    res[..., 3] *= alpha
+                        output_alpha = _resample(self, A[..., 3], out_shape, t) * alpha
+                    output = _resample(
+                        self, _rgb_to_rgba(A[..., :3]), out_shape, t)
+                output[..., 3] = output_alpha  # recombine rgb and alpha
 
-            # res is now either a 2D array of normed (int or float) data
+            # output is now either a 2D array of normed (int or float) data
             # or an RGBA array of re-sampled input
-            output = self.to_rgba(res, bytes=True, norm=False)
+            output = self.to_rgba(output, bytes=True, norm=False)
             # output is now a correctly sized RGBA array of uint8
 
             # Apply alpha *after* if the input was greyscale without a mask
@@ -751,10 +743,11 @@ class _ImageBase(mcolorizer.ColorizingArtist):
 
         Parameters
         ----------
-        s : {'data', 'rgba', 'auto'}, default: :rc:`image.interpolation_stage`
-            Whether to apply resampling interpolation in data or RGBA space.
-            If 'auto', 'rgba' is used if the upsampling rate is less than 3,
-            otherwise 'data' is used.
+        s : {'data', 'rgba', 'auto'} or None
+            Whether to apply up/downsampling interpolation in data or RGBA
+            space.  If None, use :rc:`image.interpolation_stage`.
+            If 'auto' we will check upsampling rate and if less
+            than 3 then use 'rgba', otherwise use 'data'.
         """
         s = mpl._val_or_rc(s, 'image.interpolation_stage')
         _api.check_in_list(['data', 'rgba', 'auto'], s=s)
@@ -775,7 +768,8 @@ class _ImageBase(mcolorizer.ColorizingArtist):
 
         Parameters
         ----------
-        v : bool, default: :rc:`image.resample`
+        v : bool or None
+            If None, use :rc:`image.resample`.
         """
         v = mpl._val_or_rc(v, 'image.resample')
         self._resample = v
@@ -804,10 +798,8 @@ class _ImageBase(mcolorizer.ColorizingArtist):
 
     def set_filterrad(self, filterrad):
         """
-        Set the resize filter radius (only applicable to some
-        interpolation schemes).
-
-        See help for `~.Axes.imshow`.
+        Set the resize filter radius only applicable to some
+        interpolation schemes -- see help for imshow
 
         Parameters
         ----------
@@ -1606,8 +1598,10 @@ def imsave(fname, arr, vmin=None, vmax=None, cmap=None, format=None,
     else:
         # Don't bother creating an image; this avoids rounding errors on the
         # size when dividing and then multiplying by dpi.
-        origin = mpl._val_or_rc(origin, "image.origin")
-        _api.check_in_list(('upper', 'lower'), origin=origin)
+        if origin is None:
+            origin = mpl.rcParams["image.origin"]
+        else:
+            _api.check_in_list(('upper', 'lower'), origin=origin)
         if origin == "lower":
             arr = arr[::-1]
         if (isinstance(arr, memoryview) and arr.format == "B"

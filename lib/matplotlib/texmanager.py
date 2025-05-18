@@ -326,8 +326,10 @@ class TexManager:
     @classmethod
     def get_grey(cls, tex, fontsize=None, dpi=None):
         """Return the alpha channel."""
-        fontsize = mpl._val_or_rc(fontsize, 'font.size')
-        dpi = mpl._val_or_rc(dpi, 'savefig.dpi')
+        if not fontsize:
+            fontsize = mpl.rcParams['font.size']
+        if not dpi:
+            dpi = mpl.rcParams['savefig.dpi']
         key = cls._get_tex_source(tex, fontsize), dpi
         alpha = cls._grey_arrayd.get(key)
         if alpha is None:

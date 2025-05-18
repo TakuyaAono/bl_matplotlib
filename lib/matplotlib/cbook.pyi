@@ -14,7 +14,6 @@ from typing import (
     Generic,
     IO,
     Literal,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -144,7 +143,6 @@ STEP_LOOKUP_MAP: dict[str, Callable]
 def index_of(y: float | ArrayLike) -> tuple[np.ndarray, np.ndarray]: ...
 def safe_first_element(obj: Collection[_T]) -> _T: ...
 def sanitize_sequence(data): ...
-def _resize_sequence(seq: Sequence, N: int) -> Sequence: ...
 def normalize_kwargs(
     kw: dict[str, Any],
     alias_mapping: dict[str, list[str]] | type[Artist] | Artist | None = ...,

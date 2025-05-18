@@ -1,5 +1,4 @@
 aas
-ABD
 axises
 coo
 curvelinear
@@ -15,7 +14,6 @@ oint
 oly
 te
 thisy
-ure
 whis
 wit
 Copin

@@ -70,6 +70,6 @@ plt.show()
 #
 # .. tags::
 #
-#    plot-type: polar
-#    plot-type: scatter
+#    plot-style: polar
+#    plot-style: scatter
 #    level: beginner

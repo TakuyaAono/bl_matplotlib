@@ -25,10 +25,10 @@ class FaceFlags(Flag):
     CID_KEYED = cast(int, ...)
     TRICKY = cast(int, ...)
     COLOR = cast(int, ...)
-    VARIATION = cast(int, ...)
-    SVG = cast(int, ...)
-    SBIX = cast(int, ...)
-    SBIX_OVERLAY = cast(int, ...)
+    # VARIATION = cast(int, ...)  # FT 2.9
+    # SVG = cast(int, ...)  # FT 2.12
+    # SBIX = cast(int, ...)  # FT 2.12
+    # SBIX_OVERLAY = cast(int, ...)  # FT 2.12
 
 class Kerning(Enum):
     DEFAULT = cast(int, ...)
@@ -52,9 +52,9 @@ class LoadFlags(Flag):
     LINEAR_DESIGN = cast(int, ...)
     NO_AUTOHINT = cast(int, ...)
     COLOR = cast(int, ...)
-    COMPUTE_METRICS = cast(int, ...)
-    BITMAP_METRICS_ONLY = cast(int, ...)
-    NO_SVG = cast(int, ...)
+    COMPUTE_METRICS = cast(int, ...)  # FT 2.6.1
+    # BITMAP_METRICS_ONLY = cast(int, ...)  # FT 2.7.1
+    # NO_SVG = cast(int, ...)  # FT 2.13.1
     # The following should be unique, but the above can be OR'd together.
     TARGET_NORMAL = cast(int, ...)
     TARGET_LIGHT = cast(int, ...)

@@ -15,7 +15,7 @@ import io
 import pytest
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_log_scales(fig_test, fig_ref):
     ax_test = fig_test.add_subplot(122, yscale='log', xscale='symlog')
     ax_test.axvline(24.1)
@@ -107,8 +107,7 @@ def test_logscale_mask():
     fig, ax = plt.subplots()
     ax.plot(np.exp(-xs**2))
     fig.canvas.draw()
-    ax.set(yscale="log",
-           yticks=10.**np.arange(-300, 0, 24))  # Backcompat tick selection.
+    ax.set(yscale="log")
 
 
 def test_extra_kwargs_raise():
@@ -163,7 +162,6 @@ def test_logscale_nonpos_values():
 
     ax4.set_yscale('log')
     ax4.set_xscale('log')
-    ax4.set_yticks([1e-2, 1, 1e+2])  # Backcompat tick selection.
 
 
 def test_invalid_log_lims():

@@ -88,4 +88,4 @@ ax.set_xlim(16, 365)
 plt.show()
 
 # %%
-# .. tags:: interactivity: zoom, interactivity: event-handling
+# .. tags:: interactivity: zoom, event-handling

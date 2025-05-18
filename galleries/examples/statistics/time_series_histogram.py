@@ -100,7 +100,7 @@ plt.show()
 #    plot-type: pcolormesh
 #    purpose: storytelling
 #    styling: color
-#    styling: colormap
+#    component: colormap
 #
 # .. admonition:: References
 #

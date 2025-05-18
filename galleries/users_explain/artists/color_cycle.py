@@ -76,22 +76,9 @@ plt.show()
 # ----------------------------------------------------------------------
 #
 # Remember, a custom cycler can be set in your :file:`matplotlibrc`
-# file or a style file (:file:`style.mplstyle`) under ``axes.prop_cycle``, e.g.
+# file or a style file (:file:`style.mplstyle`) under ``axes.prop_cycle``:
 #
-# .. code-block:: none
-#
-#    axes.prop_cycle : cycler(color=['red', 'royalblue', 'gray'])
-#
-# For colors, a single string may be used either for one of the
-# :doc:`/gallery/color/color_sequences`
-#
-# .. code-block:: none
-#
-#    axes.prop_cycle : cycler(color='Accent')
-#
-# or if each color has a single character name:
-#
-# .. code-block:: none
+# .. code-block:: python
 #
 #    axes.prop_cycle : cycler(color='bgrcmyk')
 #

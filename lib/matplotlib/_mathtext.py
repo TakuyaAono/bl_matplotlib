@@ -14,16 +14,15 @@ import re
 import types
 import unicodedata
 import string
-import textwrap
 import typing as T
 from typing import NamedTuple
 
 import numpy as np
 from pyparsing import (
-    Empty, Forward, Literal, Group, NotAny, OneOrMore, Optional,
+    Empty, Forward, Literal, NotAny, oneOf, OneOrMore, Optional,
     ParseBaseException, ParseException, ParseExpression, ParseFatalException,
     ParserElement, ParseResults, QuotedString, Regex, StringEnd, ZeroOrMore,
-    pyparsing_common, nested_expr, one_of)
+    pyparsing_common, Group)
 
 import matplotlib as mpl
 from . import cbook
@@ -32,12 +31,18 @@ from ._mathtext_data import (
 from .font_manager import FontProperties, findfont, get_font
 from .ft2font import FT2Font, FT2Image, Kerning, LoadFlags
 
+from packaging.version import parse as parse_version
+from pyparsing import __version__ as pyparsing_version
+if parse_version(pyparsing_version).major < 3:
+    from pyparsing import nestedExpr as nested_expr
+else:
+    from pyparsing import nested_expr
 
 if T.TYPE_CHECKING:
     from collections.abc import Iterable
     from .ft2font import Glyph
 
-ParserElement.enable_packrat()
+ParserElement.enablePackrat()
 _log = logging.getLogger("matplotlib.mathtext")
 
 
@@ -1166,16 +1171,12 @@ class List(Box):
         self.glue_sign    = 0    # 0: normal, -1: shrinking, 1: stretching
         self.glue_order   = 0    # The order of infinity (0 - 3) for the glue
 
-    def __repr__(self):
-        return "{}<w={:.02f} h={:.02f} d={:.02f} s={:.02f}>[{}]".format(
+    def __repr__(self) -> str:
+        return '{}<w={:.02f} h={:.02f} d={:.02f} s={:.02f}>[{}]'.format(
             super().__repr__(),
             self.width, self.height,
             self.depth, self.shift_amount,
-            "\n" + textwrap.indent(
-                "\n".join(map("{!r},".format, self.children)),
-                "  ") + "\n"
-            if self.children else ""
-        )
+            ', '.join([repr(x) for x in self.children]))
 
     def _set_glue(self, x: float, sign: int, totals: list[float],
                   error_type: str) -> None:
@@ -1609,7 +1610,7 @@ def ship(box: Box, xy: tuple[float, float] = (0, 0)) -> Output:
         return -1e9 if value < -1e9 else +1e9 if value > +1e9 else value
 
     def hlist_out(box: Hlist) -> None:
-        nonlocal cur_v, cur_h
+        nonlocal cur_v, cur_h, off_h, off_v
 
         cur_g = 0
         cur_glue = 0.
@@ -1672,7 +1673,7 @@ def ship(box: Box, xy: tuple[float, float] = (0, 0)) -> Output:
                 cur_h += rule_width
 
     def vlist_out(box: Vlist) -> None:
-        nonlocal cur_v, cur_h
+        nonlocal cur_v, cur_h, off_h, off_v
 
         cur_g = 0
         cur_glue = 0.
@@ -1744,7 +1745,7 @@ def Error(msg: str) -> ParserElement:
     def raise_error(s: str, loc: int, toks: ParseResults) -> T.Any:
         raise ParseFatalException(s, loc, msg)
 
-    return Empty().set_parse_action(raise_error)
+    return Empty().setParseAction(raise_error)
 
 
 class ParserState:
@@ -1980,10 +1981,10 @@ class Parser:
                     # token, placeable, and auto_delim are forward references which
                     # are left without names to ensure useful error messages
                     if key not in ("token", "placeable", "auto_delim"):
-                        val.set_name(key)
+                        val.setName(key)
                     # Set actions
                     if hasattr(self, key):
-                        val.set_parse_action(getattr(self, key))
+                        val.setParseAction(getattr(self, key))
 
         # Root definitions.
 
@@ -2006,9 +2007,9 @@ class Parser:
             )
 
         p.float_literal  = Regex(r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)")
-        p.space          = one_of(self._space_widths)("space")
+        p.space          = oneOf(self._space_widths)("space")
 
-        p.style_literal  = one_of(
+        p.style_literal  = oneOf(
             [str(e.value) for e in self._MathStyle])("style_literal")
 
         p.symbol         = Regex(
@@ -2016,14 +2017,14 @@ class Parser:
             r"|\\[%${}\[\]_|]"
             + r"|\\(?:{})(?![A-Za-z])".format(
                 "|".join(map(re.escape, tex2uni)))
-        )("sym").leave_whitespace()
+        )("sym").leaveWhitespace()
         p.unknown_symbol = Regex(r"\\[A-Za-z]+")("name")
 
         p.font           = csnames("font", self._fontnames)
-        p.start_group    = Optional(r"\math" + one_of(self._fontnames)("font")) + "{"
+        p.start_group    = Optional(r"\math" + oneOf(self._fontnames)("font")) + "{"
         p.end_group      = Literal("}")
 
-        p.delim          = one_of(self._delims)
+        p.delim          = oneOf(self._delims)
 
         # Mutually recursive definitions.  (Minimizing the number of Forward
         # elements is important for speed.)
@@ -2084,7 +2085,7 @@ class Parser:
             r"\underset",
             p.optional_group("annotation") + p.optional_group("body"))
 
-        p.text = cmd(r"\text", QuotedString('{', '\\', end_quote_char="}"))
+        p.text = cmd(r"\text", QuotedString('{', '\\', endQuoteChar="}"))
 
         p.substack = cmd(r"\substack",
                            nested_expr(opener="{", closer="}",
@@ -2093,7 +2094,7 @@ class Parser:
 
         p.subsuper = (
             (Optional(p.placeable)("nucleus")
-             + OneOrMore(one_of(["_", "^"]) - p.placeable)("subsuper")
+             + OneOrMore(oneOf(["_", "^"]) - p.placeable)("subsuper")
              + Regex("'*")("apostrophes"))
             | Regex("'+")("apostrophes")
             | (p.named_placeable("nucleus") + Regex("'*")("apostrophes"))
@@ -2142,8 +2143,8 @@ class Parser:
 
         # Leaf definitions.
         p.math          = OneOrMore(p.token)
-        p.math_string   = QuotedString('$', '\\', unquote_results=False)
-        p.non_math      = Regex(r"(?:(?:\\[$])|[^$])*").leave_whitespace()
+        p.math_string   = QuotedString('$', '\\', unquoteResults=False)
+        p.non_math      = Regex(r"(?:(?:\\[$])|[^$])*").leaveWhitespace()
         p.main          = (
             p.non_math + ZeroOrMore(p.math_string + p.non_math) + StringEnd()
         )
@@ -2166,7 +2167,7 @@ class Parser:
             ParserState(fonts_object, 'default', 'rm', fontsize, dpi)]
         self._em_width_cache: dict[tuple[str, float, float], float] = {}
         try:
-            result = self._expression.parse_string(s)
+            result = self._expression.parseString(s)
         except ParseBaseException as err:
             # explain becomes a plain method on pyparsing 3 (err.explain(0)).
             raise ValueError("\n" + ParseException.explain(err, 0)) from None
@@ -2174,7 +2175,7 @@ class Parser:
         self._in_subscript_or_superscript = False
         # prevent operator spacing from leaking into a new expression
         self._em_width_cache = {}
-        ParserElement.reset_cache()
+        ParserElement.resetCache()
         return T.cast(Hlist, result[0])  # Known return type from main.
 
     def get_state(self) -> ParserState:
@@ -2190,13 +2191,13 @@ class Parser:
         self._state_stack.append(self.get_state().copy())
 
     def main(self, toks: ParseResults) -> list[Hlist]:
-        return [Hlist(toks.as_list())]
+        return [Hlist(toks.asList())]
 
     def math_string(self, toks: ParseResults) -> ParseResults:
-        return self._math_expression.parse_string(toks[0][1:-1], parse_all=True)
+        return self._math_expression.parseString(toks[0][1:-1], parseAll=True)
 
     def math(self, toks: ParseResults) -> T.Any:
-        hlist = Hlist(toks.as_list())
+        hlist = Hlist(toks.asList())
         self.pop_state()
         return [hlist]
 
@@ -2209,7 +2210,7 @@ class Parser:
         self.get_state().font = mpl.rcParams['mathtext.default']
         return [hlist]
 
-    float_literal = staticmethod(pyparsing_common.convert_to_float)
+    float_literal = staticmethod(pyparsing_common.convertToFloat)
 
     def text(self, toks: ParseResults) -> T.Any:
         self.push_state()
@@ -2808,7 +2809,7 @@ class Parser:
         return self._auto_sized_delimiter(
             toks["left"],
             # if "mid" in toks ... can be removed when requiring pyparsing 3.
-            toks["mid"].as_list() if "mid" in toks else [],
+            toks["mid"].asList() if "mid" in toks else [],
             toks["right"])
 
     def boldsymbol(self, toks: ParseResults) -> T.Any:

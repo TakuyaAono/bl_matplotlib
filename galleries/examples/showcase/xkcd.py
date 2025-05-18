@@ -62,11 +62,3 @@ with plt.xkcd():
         ha='center')
 
 plt.show()
-
-#
-# %%
-# .. tags::
-#
-#    plot-type: line
-#    plot-type: bar
-#    purpose: fun

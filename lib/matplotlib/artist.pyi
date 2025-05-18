@@ -26,6 +26,8 @@ class _XYPair(NamedTuple):
     x: ArrayLike
     y: ArrayLike
 
+class _Unset: ...
+
 class Artist:
     zorder: float
     stale_callback: Callable[[Artist, bool], None] | None

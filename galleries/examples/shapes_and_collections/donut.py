@@ -81,9 +81,3 @@ plt.show()
 #    - `matplotlib.axes.Axes.set_xlim`
 #    - `matplotlib.axes.Axes.set_ylim`
 #    - `matplotlib.axes.Axes.set_title`
-#
-# .. tags::
-#
-#    component: patch
-#    styling: shape
-#    purpose: fun

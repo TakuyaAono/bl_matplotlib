@@ -10,10 +10,10 @@ community venue managed by Matplotlib.
 
 Our approach to community engagement is foremost guided by our :ref:`mission-statement`:
 
-* We demonstrate that we care about visualization as a practice.
+* We demonstrate that we care about visualization as a practice
 * We deepen our practice and the community’s capacity to support users,
   facilitate exploration, produce high quality visualizations, and be
-  understandable and extensible.
+  understandable and extensible
 * We showcase advanced use of the library without adding maintenance burden to
   the documentation and recognize contributions that happen outside of the github
   workflow.
@@ -51,14 +51,13 @@ Social media
 Active social media
 ^^^^^^^^^^^^^^^^^^^
 
-* https://bsky.app/profile/matplotlib.bsky.social
-* https://fosstodon.org/@matplotlib
-* https://x.com/matplotlib
+* https://twitter.com/matplotlib
 * https://instagram.com/matplotart/
 
 Official accounts
 ^^^^^^^^^^^^^^^^^
-
+* https://bsky.app/profile/matplotlib.bsky.social
+* https://fosstodon.org/@matplotlib
 * https://www.tiktok.com/@matplotart
 * https://www.youtube.com/matplotlib
 
@@ -90,7 +89,7 @@ media accounts:
 
 * Everyone else should send an email to matplotlib-social-admin@numfocus.org:
 
-  * Introduce yourself - GitHub handle and participation in the community.
+  * Introduce yourself - github handle and participation in the community.
   * Describe the reason for wanting to moderate or contribute to social.
 
 
@@ -105,8 +104,6 @@ guidelines, ask on the :ref:`social-media-coordination` channels before posting.
 General guidelines
 ------------------
 
-* Do not share information that violates Matplotlib's :ref:`code of conduct <code_of_conduct>` or does not align with Matplotlib's :ref:`mission-statement`.
-
 * Focus on Matplotlib, 3rd party packages, and visualizations made with Matplotlib.
 * These are also acceptable topics:
 
@@ -120,15 +117,14 @@ General guidelines
 
 * Follow communication best practices:
 
-  * Do not share non-expert visualizations when it could cause harm, e.g.:
+  * Do not share non-expert visualizations when it could cause harm:
 
-    * Could the information affect someone's decisions in a way that impacts their personal health or safety?
-    * Could the information be used as part of a politicised debate?
+    * e.g. https://twitter.com/matplotlib/status/1244178154618605568
 
   * Clearly state when the visualization data/conclusions cannot be verified.
   * Do not rely on machine translations for sensitive visualization.
 
-* Verify sourcing of content (especially on Instagram & blog):
+* Verify sourcing of content (especially on instagram & blog):
 
   * Instagram/blog: ensure mpl has right to repost/share content
   * Make sure content is clearly cited:
@@ -148,7 +144,7 @@ Specifically:
 
 * Visual media must conform to the guidelines of all sites it may be posted on:
 
-  * https://help.x.com/en/rules-and-policies/x-rules
+  * https://help.twitter.com/en/rules-and-policies/twitter-rules
   * https://help.instagram.com/477434105621119
 
 * Emphasize the visualization techniques demonstrated by the visual media.
@@ -262,7 +258,7 @@ Changing the guidelines
 
 As the person tasked with implementing these guidelines, the `community-manager`_
 should be alerted to proposed changes. Similarly, specific platform guidelines
-(e.g. X, Instagram) should be reviewed by the person responsible for that
+(e.g. twitter, instagram) should be reviewed by the person responsible for that
 platform, when different from the community manager. If there is no consensus,
 decisions about guidelines revert to the community manager.
 

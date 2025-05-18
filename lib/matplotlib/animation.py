@@ -891,7 +891,6 @@ class Animation:
         # that cause the frame sequence to be iterated.
         self.frame_seq = self.new_frame_seq()
         self.event_source = event_source
-        self.event_source.add_callback(self._step)
 
         # Instead of starting the event source now, we connect to the figure's
         # draw_event, so that we only start once the figure has been drawn.
@@ -924,9 +923,13 @@ class Animation:
             return
         # First disconnect our draw event handler
         self._fig.canvas.mpl_disconnect(self._first_draw_id)
+
         # Now do any initial draw
         self._init_draw()
-        # Actually start the event_source.
+
+        # Add our callback for stepping the animation and
+        # actually start the event_source.
+        self.event_source.add_callback(self._step)
         self.event_source.start()
 
     def _stop(self, *args):
@@ -1769,8 +1772,8 @@ class FuncAnimation(TimedAnimation):
             self._drawn_artists = self._init_func()
             if self._blit:
                 if self._drawn_artists is None:
-                    raise RuntimeError('When blit=True, the init_func must '
-                                       'return a sequence of Artist objects.')
+                    raise RuntimeError('The init_func must return a '
+                                       'sequence of Artist objects.')
                 for a in self._drawn_artists:
                     a.set_animated(self._blit)
         self._save_seq = []
@@ -1787,8 +1790,8 @@ class FuncAnimation(TimedAnimation):
 
         if self._blit:
 
-            err = RuntimeError('When blit=True, the animation function must '
-                               'return a sequence of Artist objects.')
+            err = RuntimeError('The animation function must return a sequence '
+                               'of Artist objects.')
             try:
                 # check if a sequence
                 iter(self._drawn_artists)

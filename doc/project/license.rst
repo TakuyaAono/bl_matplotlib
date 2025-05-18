@@ -125,12 +125,6 @@ Fonts
    .. literalinclude:: ../../LICENSE/LICENSE_COURIERTEN
       :language: none
 
-.. dropdown:: Last Resort
-   :class-container: sdd
-
-   .. literalinclude:: ../../LICENSE/LICENSE_LAST_RESORT_FONT
-      :language: none
-
 .. dropdown:: STIX
    :class-container: sdd
 

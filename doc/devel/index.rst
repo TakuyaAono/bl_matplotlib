@@ -160,9 +160,9 @@ and managing a development environment and workflow:
 
       **Install**
       ^^^
-      .. rst-class:: section-toc
+
       .. toctree::
-         :maxdepth: 4
+         :maxdepth: 2
 
          development_setup
 

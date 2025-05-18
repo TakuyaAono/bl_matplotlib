@@ -55,7 +55,7 @@ def test_label_colours():
     dim = 3
 
     c = np.linspace(0, 1, dim)
-    colours = plt.colormaps["RdYlGn"](c)
+    colours = plt.cm.RdYlGn(c)
     cellText = [['1'] * dim] * dim
 
     fig = plt.figure()
@@ -196,7 +196,7 @@ def test_table_cells():
     plt.setp(table)
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_table_bbox(fig_test, fig_ref):
     data = [[2, 3],
             [4, 5]]
@@ -223,7 +223,7 @@ def test_table_bbox(fig_test, fig_ref):
                   )
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=['png'])
 def test_table_unit(fig_test, fig_ref):
     # test that table doesn't participate in unit machinery, instead uses repr/str
 

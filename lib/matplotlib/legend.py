@@ -204,7 +204,7 @@ mode : {"expand", None}
 bbox_transform : None or `~matplotlib.transforms.Transform`
     The transform for the bounding box (*bbox_to_anchor*). For a value
     of ``None`` (default) the Axes'
-    :data:`!matplotlib.axes.Axes.transAxes` transform will be used.
+    :data:`~matplotlib.axes.Axes.transAxes` transform will be used.
 
 title : str or None
     The legend's title. Default is no title (``None``).
@@ -581,8 +581,9 @@ class Legend(Artist):
             'markeredgecolor': ['get_markeredgecolor', 'get_edgecolor'],
             'mec':             ['get_markeredgecolor', 'get_edgecolor'],
         }
-        labelcolor = mpl._val_or_rc(mpl._val_or_rc(labelcolor, 'legend.labelcolor'),
-                                    'text.color')
+        labelcolor = mpl._val_or_rc(labelcolor, 'legend.labelcolor')
+        if labelcolor is None:
+            labelcolor = mpl.rcParams['text.color']
         if isinstance(labelcolor, str) and labelcolor in color_getters:
             getter_names = color_getters[labelcolor]
             for handle, text in zip(self.legend_handles, self.texts):
@@ -1286,7 +1287,7 @@ def _parse_legend_args(axs, *args, handles=None, labels=None, **kwargs):
         legend(handles=handles, labels=labels)
 
     The behavior for a mixture of positional and keyword handles and labels
-    is undefined and raises an error.
+    is undefined and issues a warning; it will be an error in the future.
 
     Parameters
     ----------
@@ -1319,8 +1320,10 @@ def _parse_legend_args(axs, *args, handles=None, labels=None, **kwargs):
     handlers = kwargs.get('handler_map')
 
     if (handles is not None or labels is not None) and args:
-        raise TypeError("When passing handles and labels, they must both be "
-                        "passed positionally or both as keywords.")
+        _api.warn_deprecated("3.9", message=(
+            "You have mixed positional and keyword arguments, some input may "
+            "be discarded.  This is deprecated since %(since)s and will "
+            "become an error in %(removal)s."))
 
     if (hasattr(handles, "__len__") and
             hasattr(labels, "__len__") and

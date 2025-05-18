@@ -13,7 +13,6 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Circle
 from matplotlib.text import Text
 import matplotlib.pyplot as plt
-from matplotlib.testing import _gen_multi_font_text
 from matplotlib.testing.decorators import check_figures_equal, image_comparison
 from matplotlib.testing._markers import needs_usetex
 from matplotlib import font_manager as fm
@@ -87,7 +86,7 @@ def test_bold_font_output_with_none_fonttype():
     ax.set_title('bold-title', fontweight='bold')
 
 
-@check_figures_equal(extensions=['svg'], tol=20)
+@check_figures_equal(tol=20)
 def test_rasterized(fig_test, fig_ref):
     t = np.arange(0, 100) * (2.3)
     x = np.cos(t)
@@ -525,26 +524,30 @@ def test_svg_metadata():
     assert values == metadata['Keywords']
 
 
-@image_comparison(["multi_font_aspath.svg"])
+@image_comparison(["multi_font_aspath.svg"], tol=1.8)
 def test_multi_font_type3():
-    fonts, test_str = _gen_multi_font_text()
-    plt.rc('font', family=fonts, size=16)
+    fp = fm.FontProperties(family=["WenQuanYi Zen Hei"])
+    if Path(fm.findfont(fp)).name != "wqy-zenhei.ttc":
+        pytest.skip("Font may be missing")
+
+    plt.rc('font', family=['DejaVu Sans', 'WenQuanYi Zen Hei'], size=27)
     plt.rc('svg', fonttype='path')
 
     fig = plt.figure()
-    fig.text(0.5, 0.5, test_str,
-             horizontalalignment='center', verticalalignment='center')
+    fig.text(0.15, 0.475, "There are 几个汉字 in between!")
 
 
 @image_comparison(["multi_font_astext.svg"])
 def test_multi_font_type42():
-    fonts, test_str = _gen_multi_font_text()
-    plt.rc('font', family=fonts, size=16)
-    plt.rc('svg', fonttype='none')
+    fp = fm.FontProperties(family=["WenQuanYi Zen Hei"])
+    if Path(fm.findfont(fp)).name != "wqy-zenhei.ttc":
+        pytest.skip("Font may be missing")
 
     fig = plt.figure()
-    fig.text(0.5, 0.5, test_str,
-             horizontalalignment='center', verticalalignment='center')
+    plt.rc('svg', fonttype='none')
+
+    plt.rc('font', family=['DejaVu Sans', 'WenQuanYi Zen Hei'], size=27)
+    fig.text(0.15, 0.475, "There are 几个汉字 in between!")
 
 
 @pytest.mark.parametrize('metadata,error,message', [

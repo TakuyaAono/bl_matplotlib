@@ -59,7 +59,9 @@ class EmbeddedQueue
 
     struct item
     {
-        item() = default;
+        item()
+        {
+        }
 
         inline void set(const unsigned cmd_, const double x_, const double y_)
         {

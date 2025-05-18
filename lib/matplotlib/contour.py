@@ -24,7 +24,6 @@ import matplotlib.font_manager as font_manager
 import matplotlib.cbook as cbook
 import matplotlib.patches as mpatches
 import matplotlib.transforms as mtransforms
-from . import artist
 
 
 def _contour_labeler_event_handler(cs, inline, inline_spacing, event):
@@ -184,14 +183,10 @@ class ContourLabeler:
             self.labelMappable = self
             self.labelCValueList = np.take(self.cvalues, self.labelIndiceList)
         else:
-            # handling of explicit colors for labels:
-            # make labelCValueList contain integers [0, 1, 2, ...] and a cmap
-            # so that cmap(i) == colors[i]
-            num_levels = len(self.labelLevelList)
-            colors = cbook._resize_sequence(mcolors.to_rgba_array(colors), num_levels)
-            self.labelMappable = cm.ScalarMappable(
-                cmap=mcolors.ListedColormap(colors), norm=mcolors.NoNorm())
-            self.labelCValueList = list(range(num_levels))
+            cmap = mcolors.ListedColormap(colors, N=len(self.labelLevelList))
+            self.labelCValueList = list(range(len(self.labelLevelList)))
+            self.labelMappable = cm.ScalarMappable(cmap=cmap,
+                                                   norm=mcolors.NoNorm())
 
         self.labelXYs = []
 
@@ -696,8 +691,12 @@ class ContourSet(ContourLabeler, mcoll.Collection):
             self.origin = mpl.rcParams['image.origin']
 
         self._orig_linestyles = linestyles  # Only kept for user access.
-        self.negative_linestyles = mpl._val_or_rc(negative_linestyles,
-                                                  'contour.negative_linestyle')
+        self.negative_linestyles = negative_linestyles
+        # If negative_linestyles was not defined as a keyword argument, define
+        # negative_linestyles with rcParams
+        if self.negative_linestyles is None:
+            self.negative_linestyles = \
+                mpl.rcParams['contour.negative_linestyle']
 
         kwargs = self._process_args(*args, **kwargs)
         self._process_levels()
@@ -732,8 +731,7 @@ class ContourSet(ContourLabeler, mcoll.Collection):
                 if self._extend_min:
                     i0 = 1
 
-            cmap = mcolors.ListedColormap(
-                cbook._resize_sequence(color_sequence[i0:], ncolors))
+            cmap = mcolors.ListedColormap(color_sequence[i0:None], N=ncolors)
 
             if use_set_under_over:
                 if self._extend_min:
@@ -768,7 +766,6 @@ class ContourSet(ContourLabeler, mcoll.Collection):
                 edgecolor="none",
                 # Default zorder taken from Collection
                 zorder=kwargs.pop("zorder", 1),
-                rasterized=kwargs.pop("rasterized", False),
             )
 
         else:
@@ -964,29 +961,12 @@ class ContourSet(ContourLabeler, mcoll.Collection):
             label.set_color(self.labelMappable.to_rgba(cv))
         super().changed()
 
-    def _ensure_locator_exists(self, N):
-        """
-        Set a locator on this ContourSet if it's not already set.
-
-        Parameters
-        ----------
-        N : int or None
-            If *N* is an int, it is used as the target number of levels.
-            Otherwise when *N* is None, a reasonable default is chosen;
-            for logscales the LogLocator chooses, N=7 is the default
-            otherwise.
-        """
-        if self.locator is None:
-            if self.logscale:
-                self.locator = ticker.LogLocator(numticks=N)
-            else:
-                if N is None:
-                    N = 7  # Hard coded default
-                self.locator = ticker.MaxNLocator(N + 1, min_n_ticks=1)
-
-    def _autolev(self):
+    def _autolev(self, N):
         """
         Select contour levels to span the data.
+
+        The target number of levels, *N*, is used only when the
+        scale is not log and default locator is used.
 
         We need two more levels for filled contours than for
         line contours, because for the latter we need to specify
@@ -995,6 +975,12 @@ class ContourSet(ContourLabeler, mcoll.Collection):
         one contour line, but two filled regions, and therefore
         three levels to provide boundaries for both regions.
         """
+        if self.locator is None:
+            if self.logscale:
+                self.locator = ticker.LogLocator()
+            else:
+                self.locator = ticker.MaxNLocator(N + 1, min_n_ticks=1)
+
         lev = self.locator.tick_values(self.zmin, self.zmax)
 
         try:
@@ -1022,21 +1008,22 @@ class ContourSet(ContourLabeler, mcoll.Collection):
         """
         Determine the contour levels and store in self.levels.
         """
-        levels_arg = self.levels
-        if levels_arg is None:
+        if self.levels is None:
             if args:
-                # Set if levels manually provided
                 levels_arg = args[0]
             elif np.issubdtype(z_dtype, bool):
-                # Set default values for bool data types
-                levels_arg = [0, .5, 1] if self.filled else [.5]
-
-        if isinstance(levels_arg, Integral) or levels_arg is None:
-            self._ensure_locator_exists(levels_arg)
-            self.levels = self._autolev()
+                if self.filled:
+                    levels_arg = [0, .5, 1]
+                else:
+                    levels_arg = [.5]
+            else:
+                levels_arg = 7  # Default, hard-wired.
+        else:
+            levels_arg = self.levels
+        if isinstance(levels_arg, Integral):
+            self.levels = self._autolev(levels_arg)
         else:
             self.levels = np.asarray(levels_arg, np.float64)
-
         if self.filled and len(self.levels) < 2:
             raise ValueError("Filled contours require at least 2 levels.")
         if len(self.levels) > 1 and np.min(np.diff(self.levels)) <= 0.0:
@@ -1266,7 +1253,6 @@ class ContourSet(ContourLabeler, mcoll.Collection):
 
         return (i_level, segment, index, xmin, ymin, d2)
 
-    @artist.allow_rasterization
     def draw(self, renderer):
         paths = self._paths
         n_paths = len(paths)
@@ -1316,7 +1302,8 @@ class QuadContourSet(ContourSet):
         else:
             import contourpy
 
-            algorithm = mpl._val_or_rc(algorithm, 'contour.algorithm')
+            if algorithm is None:
+                algorithm = mpl.rcParams['contour.algorithm']
             mpl.rcParams.validate["contour.algorithm"](algorithm)
             self._algorithm = algorithm
 
@@ -1693,13 +1680,6 @@ clip_path : `~matplotlib.patches.Patch` or `.Path` or `.TransformedPath`
 
 data : indexable object, optional
     DATA_PARAMETER_PLACEHOLDER
-
-rasterized : bool, optional
-    *Only applies to* `.contourf`.
-    Rasterize the contour plot when drawing vector graphics.  This can
-    speed up rendering and produce smaller files for large data sets.
-    See also :doc:`/gallery/misc/rasterization_demo`.
-
 
 Notes
 -----

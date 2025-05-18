@@ -92,8 +92,8 @@ def test_twin_axes_empty_and_removed():
 
 def test_twin_axes_both_with_units():
     host = host_subplot(111)
-    host.yaxis.axis_date()
-    host.plot([0, 1, 2], [0, 1, 2])
+    with pytest.warns(mpl.MatplotlibDeprecationWarning):
+        host.plot_date([0, 1, 2], [0, 1, 2], xdate=False, ydate=True)
     twin = host.twinx()
     twin.plot(["a", "b", "c"])
     assert host.get_yticklabels()[0].get_text() == "00:00:00"
@@ -104,6 +104,7 @@ def test_axesgrid_colorbar_log_smoketest():
     fig = plt.figure()
     grid = AxesGrid(fig, 111,  # modified to be only subplot
                     nrows_ncols=(1, 1),
+                    ngrids=1,
                     label_mode="L",
                     cbar_location="top",
                     cbar_mode="single",
@@ -637,15 +638,15 @@ def test_grid_axes_position(direction):
     assert loc[3].args[1] == loc[2].args[1]
 
 
-@pytest.mark.parametrize('rect, n_axes, error, message', (
+@pytest.mark.parametrize('rect, ngrids, error, message', (
     ((1, 1), None, TypeError, "Incorrect rect format"),
-    (111, -1, ValueError, "n_axes must be positive"),
-    (111, 7, ValueError, "n_axes must be positive"),
+    (111, -1, ValueError, "ngrids must be positive"),
+    (111, 7, ValueError, "ngrids must be positive"),
 ))
-def test_grid_errors(rect, n_axes, error, message):
+def test_grid_errors(rect, ngrids, error, message):
     fig = plt.figure()
     with pytest.raises(error, match=message):
-        Grid(fig, rect, (2, 3), n_axes=n_axes)
+        Grid(fig, rect, (2, 3), ngrids=ngrids)
 
 
 @pytest.mark.parametrize('anchor, error, message', (
@@ -660,7 +661,7 @@ def test_divider_errors(anchor, error, message):
                 anchor=anchor)
 
 
-@check_figures_equal()
+@check_figures_equal(extensions=["png"])
 def test_mark_inset_unstales_viewlim(fig_test, fig_ref):
     inset, full = fig_test.subplots(1, 2)
     full.plot([0, 5], [0, 5])
@@ -779,9 +780,3 @@ def test_anchored_locator_base_call():
 def test_grid_with_axes_class_not_overriding_axis():
     Grid(plt.figure(), 111, (2, 2), axes_class=mpl.axes.Axes)
     RGBAxes(plt.figure(), 111, axes_class=mpl.axes.Axes)
-
-
-def test_grid_n_axes():
-    fig = plt.figure()
-    grid = Grid(fig, 111, (3, 3), n_axes=5)
-    assert len(fig.axes) == grid.n_axes == 5

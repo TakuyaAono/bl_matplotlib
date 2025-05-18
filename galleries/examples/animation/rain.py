@@ -73,10 +73,3 @@ def update(frame_number):
 # Construct the animation, using the update function as the animation director.
 animation = FuncAnimation(fig, update, interval=10, save_count=100, blit=True)
 plt.show()
-
-# %%
-# .. tags::
-#
-#    component: animation
-#    plot-type: scatter
-#    purpose: fun

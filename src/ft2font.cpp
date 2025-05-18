@@ -63,12 +63,12 @@ void throw_ft_error(std::string message, FT_Error error) {
     throw std::runtime_error(os.str());
 }
 
-FT2Image::FT2Image() : m_buffer(nullptr), m_width(0), m_height(0)
+FT2Image::FT2Image() : m_buffer(NULL), m_width(0), m_height(0)
 {
 }
 
 FT2Image::FT2Image(unsigned long width, unsigned long height)
-    : m_buffer(nullptr), m_width(0), m_height(0)
+    : m_buffer(NULL), m_width(0), m_height(0)
 {
     resize(width, height);
 }
@@ -91,7 +91,7 @@ void FT2Image::resize(long width, long height)
     if ((unsigned long)width != m_width || (unsigned long)height != m_height) {
         if (numBytes > m_width * m_height) {
             delete[] m_buffer;
-            m_buffer = nullptr;
+            m_buffer = NULL;
             m_buffer = new unsigned char[numBytes];
         }
 
@@ -258,11 +258,8 @@ FT2Font::get_path(std::vector<double> &vertices, std::vector<unsigned char> &cod
 FT2Font::FT2Font(FT_Open_Args &open_args,
                  long hinting_factor_,
                  std::vector<FT2Font *> &fallback_list,
-                 FT2Font::WarnFunc warn, bool warn_if_used)
-    : ft_glyph_warn(warn), warn_if_used(warn_if_used), image(), face(nullptr),
-      hinting_factor(hinting_factor_),
-      // set default kerning factor to 0, i.e., no kerning manipulation
-      kerning_factor(0)
+                 FT2Font::WarnFunc warn)
+    : ft_glyph_warn(warn), image(), face(NULL)
 {
     clear();
 
@@ -271,19 +268,24 @@ FT2Font::FT2Font(FT_Open_Args &open_args,
         throw_ft_error("Can not load face", error);
     }
 
+    // set default kerning factor to 0, i.e., no kerning manipulation
+    kerning_factor = 0;
+
     // set a default fontsize 12 pt at 72dpi
+    hinting_factor = hinting_factor_;
+
     error = FT_Set_Char_Size(face, 12 * 64, 0, 72 * (unsigned int)hinting_factor, 72);
     if (error) {
         FT_Done_Face(face);
         throw_ft_error("Could not set the fontsize", error);
     }
 
-    if (open_args.stream != nullptr) {
+    if (open_args.stream != NULL) {
         face->face_flags |= FT_FACE_FLAG_EXTERNAL_STREAM;
     }
 
     FT_Matrix transform = { 65536 / hinting_factor, 0, 0, 65536 };
-    FT_Set_Transform(face, &transform, nullptr);
+    FT_Set_Transform(face, &transform, 0);
 
     // Set fallbacks
     std::copy(fallback_list.begin(), fallback_list.end(), std::back_inserter(fallbacks));
@@ -291,8 +293,8 @@ FT2Font::FT2Font(FT_Open_Args &open_args,
 
 FT2Font::~FT2Font()
 {
-    for (auto & glyph : glyphs) {
-        FT_Done_Glyph(glyph);
+    for (size_t i = 0; i < glyphs.size(); i++) {
+        FT_Done_Glyph(glyphs[i]);
     }
 
     if (face) {
@@ -306,16 +308,16 @@ void FT2Font::clear()
     bbox.xMin = bbox.yMin = bbox.xMax = bbox.yMax = 0;
     advance = 0;
 
-    for (auto & glyph : glyphs) {
-        FT_Done_Glyph(glyph);
+    for (size_t i = 0; i < glyphs.size(); i++) {
+        FT_Done_Glyph(glyphs[i]);
     }
 
     glyphs.clear();
     glyph_to_font.clear();
     char_to_font.clear();
 
-    for (auto & fallback : fallbacks) {
-        fallback->clear();
+    for (size_t i = 0; i < fallbacks.size(); i++) {
+        fallbacks[i]->clear();
     }
 }
 
@@ -327,10 +329,10 @@ void FT2Font::set_size(double ptsize, double dpi)
         throw_ft_error("Could not set the fontsize", error);
     }
     FT_Matrix transform = { 65536 / hinting_factor, 0, 0, 65536 };
-    FT_Set_Transform(face, &transform, nullptr);
+    FT_Set_Transform(face, &transform, 0);
 
-    for (auto & fallback : fallbacks) {
-        fallback->set_size(ptsize, dpi);
+    for (size_t i = 0; i < fallbacks.size(); i++) {
+        fallbacks[i]->set_size(ptsize, dpi);
     }
 }
 
@@ -391,8 +393,8 @@ int FT2Font::get_kerning(FT_UInt left, FT_UInt right, FT_Kerning_Mode mode,
 void FT2Font::set_kerning_factor(int factor)
 {
     kerning_factor = factor;
-    for (auto & fallback : fallbacks) {
-        fallback->set_kerning_factor(factor);
+    for (size_t i = 0; i < fallbacks.size(); i++) {
+        fallbacks[i]->set_kerning_factor(factor);
     }
 }
 
@@ -418,7 +420,7 @@ void FT2Font::set_text(
     bbox.xMax = bbox.yMax = -32000;
 
     FT_UInt previous = 0;
-    FT2Font *previous_ft_object = nullptr;
+    FT2Font *previous_ft_object = NULL;
 
     for (auto codepoint : text) {
         FT_UInt glyph_index = 0;
@@ -439,8 +441,6 @@ void FT2Font::set_text(
             char_to_font[codepoint] = ft_object_with_glyph;
             glyph_to_font[glyph_index] = ft_object_with_glyph;
             ft_object_with_glyph->load_glyph(glyph_index, flags, ft_object_with_glyph, false);
-        } else if (ft_object_with_glyph->warn_if_used) {
-            ft_glyph_warn((FT_ULong)codepoint, glyph_seen_fonts);
         }
 
         // retrieve kerning distance and move pen position
@@ -456,8 +456,8 @@ void FT2Font::set_text(
         FT_Glyph &thisGlyph = glyphs[glyphs.size() - 1];
 
         last_advance = ft_object_with_glyph->get_face()->glyph->advance.x;
-        FT_Glyph_Transform(thisGlyph, nullptr, &pen);
-        FT_Glyph_Transform(thisGlyph, &matrix, nullptr);
+        FT_Glyph_Transform(thisGlyph, 0, &pen);
+        FT_Glyph_Transform(thisGlyph, &matrix, 0);
         xys.push_back(pen.x);
         xys.push_back(pen.y);
 
@@ -492,7 +492,7 @@ void FT2Font::load_char(long charcode, FT_Int32 flags, FT2Font *&ft_object, bool
     if (fallback && char_to_font.find(charcode) != char_to_font.end()) {
         ft_object = char_to_font[charcode];
         // since it will be assigned to ft_object anyway
-        FT2Font *throwaway = nullptr;
+        FT2Font *throwaway = NULL;
         ft_object->load_char(charcode, flags, throwaway, false);
     } else if (fallback) {
         FT_UInt final_glyph_index;
@@ -510,8 +510,6 @@ void FT2Font::load_char(long charcode, FT_Int32 flags, FT2Font *&ft_object, bool
             else if (glyph_error) {
                 throw_ft_error("Could not load charcode", glyph_error);
             }
-        } else if (ft_object_with_glyph->warn_if_used) {
-            ft_glyph_warn(charcode, glyph_seen_fonts);
         }
         ft_object = ft_object_with_glyph;
     } else {
@@ -519,7 +517,7 @@ void FT2Font::load_char(long charcode, FT_Int32 flags, FT2Font *&ft_object, bool
         ft_object = this;
         FT_UInt glyph_index = FT_Get_Char_Index(face, (FT_ULong) charcode);
         if (!glyph_index){
-            glyph_seen_fonts.insert((face != nullptr)?face->family_name: nullptr);
+            glyph_seen_fonts.insert((face != NULL)?face->family_name: NULL);
             ft_glyph_warn((FT_ULong)charcode, glyph_seen_fonts);
         }
         if (FT_Error error = FT_Load_Glyph(face, glyph_index, flags)) {
@@ -571,9 +569,7 @@ bool FT2Font::load_char_with_fallback(FT2Font *&ft_object_with_glyph,
                                       bool override = false)
 {
     FT_UInt glyph_index = FT_Get_Char_Index(face, charcode);
-    if (!warn_if_used) {
-        glyph_seen_fonts.insert(face->family_name);
-    }
+    glyph_seen_fonts.insert(face->family_name);
 
     if (glyph_index || override) {
         charcode_error = FT_Load_Glyph(face, glyph_index, flags);
@@ -598,8 +594,8 @@ bool FT2Font::load_char_with_fallback(FT2Font *&ft_object_with_glyph,
         return true;
     }
     else {
-        for (auto & fallback : fallbacks) {
-            bool was_found = fallback->load_char_with_fallback(
+        for (size_t i = 0; i < fallbacks.size(); ++i) {
+            bool was_found = fallbacks[i]->load_char_with_fallback(
                 ft_object_with_glyph, final_glyph_index, parent_glyphs,
                 parent_char_to_font, parent_glyph_to_font, charcode, flags,
                 charcode_error, glyph_error, glyph_seen_fonts, override);
@@ -640,7 +636,7 @@ void FT2Font::load_glyph(FT_UInt glyph_index, FT_Int32 flags)
 
 FT_UInt FT2Font::get_char_index(FT_ULong charcode, bool fallback = false)
 {
-    FT2Font *ft_object = nullptr;
+    FT2Font *ft_object = NULL;
     if (fallback && char_to_font.find(charcode) != char_to_font.end()) {
         // fallback denotes whether we want to search fallback list.
         // should call set_text/load_char_with_fallback to parent FT2Font before
@@ -678,14 +674,14 @@ void FT2Font::draw_glyphs_to_bitmap(bool antialiased)
 
     image.resize(width, height);
 
-    for (auto & glyph : glyphs) {
+    for (size_t n = 0; n < glyphs.size(); n++) {
         FT_Error error = FT_Glyph_To_Bitmap(
-            &glyph, antialiased ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO, nullptr, 1);
+            &glyphs[n], antialiased ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO, 0, 1);
         if (error) {
             throw_ft_error("Could not convert glyph to bitmap", error);
         }
 
-        FT_BitmapGlyph bitmap = (FT_BitmapGlyph)glyph;
+        FT_BitmapGlyph bitmap = (FT_BitmapGlyph)glyphs[n];
         // now, draw to our target surface (convert position)
 
         // bitmap left and top in pixel, string bbox in subpixel

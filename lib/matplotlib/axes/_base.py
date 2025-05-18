@@ -6,7 +6,6 @@ import logging
 from numbers import Real
 from operator import attrgetter
 import re
-import textwrap
 import types
 
 import numpy as np
@@ -220,8 +219,10 @@ class _process_plot_var_args:
         self.set_prop_cycle(None)
 
     def set_prop_cycle(self, cycler):
+        if cycler is None:
+            cycler = mpl.rcParams['axes.prop_cycle']
         self._idx = 0
-        self._cycler_items = [*mpl._val_or_rc(cycler, 'axes.prop_cycle')]
+        self._cycler_items = [*cycler]
 
     def __call__(self, axes, *args, data=None, return_kwargs=False, **kwargs):
         axes._process_unit_info(kwargs=kwargs)
@@ -523,6 +524,13 @@ class _process_plot_var_args:
             labels = [label] * n_datasets
         elif len(label) == n_datasets:
             labels = label
+        elif n_datasets == 1:
+            msg = (f'Passing label as a length {len(label)} sequence when '
+                    'plotting a single dataset is deprecated in Matplotlib 3.9 '
+                    'and will error in 3.11.  To keep the current behavior, '
+                    'cast the sequence to string before passing.')
+            _api.warn_deprecated('3.9', message=msg)
+            labels = [label]
         else:
             raise ValueError(
                 f"label must be scalar or have the same length as the input "
@@ -593,6 +601,12 @@ class _AxesBase(martist.Artist):
     - :ref:`Axis wrapper methods on Axes <axes-api-axis>`
     - :doc:`Axis API </api/axis_api>`
     """
+
+    @property
+    def _axis_map(self):
+        """A mapping of axis names, e.g. 'x', to `Axis` instances."""
+        return {name: getattr(self, f"{name}axis")
+                for name in self._axis_names}
 
     def __str__(self):
         return "{0}({1[0]:g},{1[1]:g};{1[2]:g}x{1[3]:g})".format(
@@ -706,13 +720,11 @@ class _AxesBase(martist.Artist):
         self._colorbars = []
         self.spines = mspines.Spines.from_dict(self._gen_axes_spines())
 
-        self.xaxis = None  # will be populated in _init_axis()
-        self.yaxis = None  # will be populated in _init_axis()
-        self._init_axis()  # this call may differ for non-sep axes, e.g., polar
-        self._axis_map = {
-            name: getattr(self, f"{name}axis") for name in self._axis_names
-        }  # A mapping of axis names, e.g. 'x', to `Axis` instances.
-        self._facecolor = mpl._val_or_rc(facecolor, 'axes.facecolor')
+        # this call may differ for non-sep axes, e.g., polar
+        self._init_axis()
+        if facecolor is None:
+            facecolor = mpl.rcParams['axes.facecolor']
+        self._facecolor = facecolor
         self._frameon = frameon
         self.set_axisbelow(mpl.rcParams['axes.axisbelow'])
 
@@ -1091,7 +1103,7 @@ class _AxesBase(martist.Artist):
         Returns
         -------
         transform : Transform
-            The transform used for drawing secondary y-axis labels, which will
+            The transform used for drawing secondart y-axis labels, which will
             add *pad_points* of padding (in points) between the axis and the
             label.  The x-direction is in axis coordinates and the y-direction
             is in data coordinates
@@ -3499,9 +3511,7 @@ class _AxesBase(martist.Artist):
         labelbottom, labeltop, labelleft, labelright : bool
             Whether to draw the respective tick labels.
         labelrotation : float
-            Tick label rotation angle in degrees. See `.Text.set_rotation`.
-        labelrotation_mode : {'default', 'anchor', 'xtick', 'ytick'}
-            Tick label rotation mode. See `.Text.set_rotation_mode`.
+            Tick label rotation
         grid_color : :mpltype:`color`
             Gridline color.
         grid_alpha : float
@@ -3611,7 +3621,8 @@ class _AxesBase(martist.Artist):
                                 f"supplied")
 
         else:
-            loc = mpl._val_or_rc(loc, 'xaxis.labellocation')
+            loc = (loc if loc is not None
+                   else mpl.rcParams['xaxis.labellocation'])
             _api.check_in_list(('left', 'center', 'right'), loc=loc)
 
             x = {
@@ -3625,33 +3636,17 @@ class _AxesBase(martist.Artist):
 
     def invert_xaxis(self):
         """
-        [*Discouraged*] Invert the x-axis.
-
-        .. admonition:: Discouraged
-
-            The use of this method is discouraged.
-            Use `.Axes.set_xinverted` instead.
+        Invert the x-axis.
 
         See Also
         --------
-        get_xinverted
+        xaxis_inverted
         get_xlim, set_xlim
         get_xbound, set_xbound
         """
         self.xaxis.set_inverted(not self.xaxis.get_inverted())
 
-    set_xinverted = _axis_method_wrapper("xaxis", "set_inverted")
-    get_xinverted = _axis_method_wrapper("xaxis", "get_inverted")
     xaxis_inverted = _axis_method_wrapper("xaxis", "get_inverted")
-    if xaxis_inverted.__doc__:
-        xaxis_inverted.__doc__ = ("[*Discouraged*] " + xaxis_inverted.__doc__ +
-                                  textwrap.dedent("""
-
-        .. admonition:: Discouraged
-
-            The use of this method is discouraged.
-            Use `.Axes.get_xinverted` instead.
-        """))
 
     def get_xbound(self):
         """
@@ -3879,7 +3874,8 @@ class _AxesBase(martist.Artist):
                                 f"supplied")
 
         else:
-            loc = mpl._val_or_rc(loc, 'yaxis.labellocation')
+            loc = (loc if loc is not None
+                   else mpl.rcParams['yaxis.labellocation'])
             _api.check_in_list(('bottom', 'center', 'top'), loc=loc)
 
             y, ha = {
@@ -3893,33 +3889,17 @@ class _AxesBase(martist.Artist):
 
     def invert_yaxis(self):
         """
-        [*Discouraged*]  Invert the y-axis.
-
-        .. admonition:: Discouraged
-
-            The use of this method is discouraged.
-            Use `.Axes.set_yinverted` instead.
+        Invert the y-axis.
 
         See Also
         --------
-        get_yinverted
+        yaxis_inverted
         get_ylim, set_ylim
         get_ybound, set_ybound
         """
         self.yaxis.set_inverted(not self.yaxis.get_inverted())
 
-    set_yinverted = _axis_method_wrapper("yaxis", "set_inverted")
-    get_yinverted = _axis_method_wrapper("yaxis", "get_inverted")
     yaxis_inverted = _axis_method_wrapper("yaxis", "get_inverted")
-    if yaxis_inverted.__doc__:
-        yaxis_inverted.__doc__ = ("[*Discouraged*] " + yaxis_inverted.__doc__ +
-                                  textwrap.dedent("""
-
-        .. admonition:: Discouraged
-
-            The use of this method is discouraged.
-            Use `.Axes.get_yinverted` instead.
-        """))
 
     def get_ybound(self):
         """
@@ -4090,7 +4070,7 @@ class _AxesBase(martist.Artist):
         """
         Return *x* formatted as an x-value.
 
-        This function will use the `!fmt_xdata` attribute if it is not None,
+        This function will use the `.fmt_xdata` attribute if it is not None,
         else will fall back on the xaxis major formatter.
         """
         return (self.fmt_xdata if self.fmt_xdata is not None
@@ -4100,7 +4080,7 @@ class _AxesBase(martist.Artist):
         """
         Return *y* formatted as a y-value.
 
-        This function will use the `!fmt_ydata` attribute if it is not None,
+        This function will use the `.fmt_ydata` attribute if it is not None,
         else will fall back on the yaxis major formatter.
         """
         return (self.fmt_ydata if self.fmt_ydata is not None
@@ -4624,7 +4604,7 @@ class _AxesBase(martist.Artist):
         self._twinned_axes.join(self, twin)
         return twin
 
-    def twinx(self, axes_class=None, **kwargs):
+    def twinx(self):
         """
         Create a twin Axes sharing the xaxis.
 
@@ -4633,22 +4613,6 @@ class _AxesBase(martist.Artist):
         x-axis autoscale setting will be inherited from the original
         Axes.  To ensure that the tick marks of both y-axes align, see
         `~matplotlib.ticker.LinearLocator`.
-
-        Parameters
-        ----------
-        axes_class : subclass type of `~.axes.Axes`, optional
-            The `.axes.Axes` subclass that is instantiated.  This parameter
-            is incompatible with *projection* and *polar*.  See
-            :ref:`axisartist_users-guide-index` for examples.
-
-            By default, `~.axes.Axes` is used.
-
-            .. versionadded:: 3.11
-
-        kwargs : dict
-            The keyword arguments passed to `.Figure.add_subplot` or `.Figure.add_axes`.
-
-            .. versionadded:: 3.11
 
         Returns
         -------
@@ -4660,9 +4624,7 @@ class _AxesBase(martist.Artist):
         For those who are 'picking' artists while using twinx, pick
         events are only called for the artists in the top-most Axes.
         """
-        if axes_class:
-            kwargs["axes_class"] = axes_class
-        ax2 = self._make_twin_axes(sharex=self, **kwargs)
+        ax2 = self._make_twin_axes(sharex=self)
         ax2.yaxis.tick_right()
         ax2.yaxis.set_label_position('right')
         ax2.yaxis.set_offset_position('right')
@@ -4673,7 +4635,7 @@ class _AxesBase(martist.Artist):
         ax2.xaxis.units = self.xaxis.units
         return ax2
 
-    def twiny(self, axes_class=None, **kwargs):
+    def twiny(self):
         """
         Create a twin Axes sharing the yaxis.
 
@@ -4682,22 +4644,6 @@ class _AxesBase(martist.Artist):
         y-axis autoscale setting will be inherited from the original Axes.
         To ensure that the tick marks of both x-axes align, see
         `~matplotlib.ticker.LinearLocator`.
-
-        Parameters
-        ----------
-        axes_class : subclass type of `~.axes.Axes`, optional
-            The `.axes.Axes` subclass that is instantiated.  This parameter
-            is incompatible with *projection* and *polar*.  See
-            :ref:`axisartist_users-guide-index` for examples.
-
-            By default, `~.axes.Axes` is used.
-
-            .. versionadded:: 3.11
-
-        kwargs : dict
-            The keyword arguments passed to `.Figure.add_subplot` or `.Figure.add_axes`.
-
-            .. versionadded:: 3.11
 
         Returns
         -------
@@ -4709,9 +4655,7 @@ class _AxesBase(martist.Artist):
         For those who are 'picking' artists while using twiny, pick
         events are only called for the artists in the top-most Axes.
         """
-        if axes_class:
-            kwargs["axes_class"] = axes_class
-        ax2 = self._make_twin_axes(sharey=self, **kwargs)
+        ax2 = self._make_twin_axes(sharey=self)
         ax2.xaxis.tick_top()
         ax2.xaxis.set_label_position('top')
         ax2.set_autoscaley_on(self.get_autoscaley_on())

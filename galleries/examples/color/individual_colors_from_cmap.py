@@ -68,7 +68,7 @@ plt.show()
 #
 # .. tags::
 #
-#    styling: colormap
+#    component: colormap
 #    styling: color
 #    plot-type: line
 #    level: intermediate

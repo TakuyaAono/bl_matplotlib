@@ -282,7 +282,8 @@ class MarkerStyle:
             The part of the marker surface that is colored with
             markerfacecolor.
         """
-        fillstyle = mpl._val_or_rc(fillstyle, 'markers.fillstyle')
+        if fillstyle is None:
+            fillstyle = mpl.rcParams['markers.fillstyle']
         _api.check_in_list(self.fillstyles, fillstyle=fillstyle)
         self._fillstyle = fillstyle
 

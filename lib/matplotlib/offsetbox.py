@@ -206,10 +206,10 @@ class OffsetBox(martist.Artist):
     The child artists are meant to be drawn at a relative position to its
     parent.
 
-    Being an artist itself, all keyword arguments are passed on to `.Artist`.
+    Being an artist itself, all parameters are passed on to `.Artist`.
     """
-    def __init__(self, **kwargs):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
         self._internal_update(kwargs)
         # Clipping has not been implemented in the OffsetBox family, so
         # disable the clip flag for consistency. It can always be turned back
@@ -1378,7 +1378,9 @@ or callable, default: value of *xycoords*
 
         If *s* is not given, reset to :rc:`legend.fontsize`.
         """
-        s = mpl._val_or_rc(s, "legend.fontsize")
+        if s is None:
+            s = mpl.rcParams["legend.fontsize"]
+
         self.prop = FontProperties(size=s)
         self.stale = True
 
