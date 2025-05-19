@@ -44,49 +44,55 @@
  */
 
 /************************************************************
- This is a base class for vertex converters that need to queue their
- output.  It is designed to be as fast as possible vs. the STL's queue
- which is more flexible.
+ * 出力をキューに入れる必要がある頂点コンバーターの基底クラスです。
+ * STLのキューよりも柔軟性は低いですが、可能な限り高速に動作するように
+ * 設計されています。
  */
 template <int QueueSize>
 class EmbeddedQueue
 {
   protected:
+    // コンストラクタ：キューを初期化
     EmbeddedQueue() : m_queue_read(0), m_queue_write(0)
     {
-        // empty
+        // 空の実装
     }
 
+    // キューアイテムの構造体
     struct item
     {
         item()
         {
         }
 
+        // アイテムの値を設定
         inline void set(const unsigned cmd_, const double x_, const double y_)
         {
             cmd = cmd_;
             x = x_;
             y = y_;
         }
-        unsigned cmd;
-        double x;
-        double y;
+        unsigned cmd;  // コマンド
+        double x;      // X座標
+        double y;      // Y座標
     };
-    int m_queue_read;
-    int m_queue_write;
-    item m_queue[QueueSize];
+    int m_queue_read;   // キュー読み取り位置
+    int m_queue_write;  // キュー書き込み位置
+    item m_queue[QueueSize];  // キュー配列
 
+    // キューにアイテムを追加
     inline void queue_push(const unsigned cmd, const double x, const double y)
     {
         m_queue[m_queue_write++].set(cmd, x, y);
     }
 
+    // キューが空でないかチェック
     inline bool queue_nonempty()
     {
         return m_queue_read < m_queue_write;
     }
 
+    // キューからアイテムを取り出す
     inline bool queue_pop(unsigned *cmd, double *x, double *y)
     {
         if (queue_nonempty()) {
@@ -104,6 +110,7 @@ class EmbeddedQueue
         return false;
     }
 
+    // キューをクリア
     inline void queue_clear()
     {
         m_queue_read = 0;
@@ -111,7 +118,7 @@ class EmbeddedQueue
     }
 };
 
-/* Defines when path segment types have more than one vertex */
+/* パスセグメントタイプごとの追加頂点数を定義 */
 static const size_t num_extra_points_map[] =
     {0, 0, 0, 1,
      2, 0, 0, 0,
@@ -119,34 +126,38 @@ static const size_t num_extra_points_map[] =
      0, 0, 0, 0
     };
 
-/* An implementation of a simple linear congruential random number
-   generator.  This is a "classic" and fast RNG which works fine for
-   our purposes of sketching lines, but should not be used for things
-   that matter, like crypto.  We are implementing this ourselves
-   rather than using the C stdlib so that the seed state is not shared
-   with other third-party code. There are recent C++ options, but we
-   still require nothing later than C++98 for compatibility
-   reasons. */
+/* 単純な線形合同法による乱数生成器の実装
+ * これは「古典的」で高速なRNGで、線のスケッチには適していますが、
+ * 暗号化など重要な用途には使用すべきではありません。
+ * サードパーティのコードとシード状態を共有しないように、
+ * C標準ライブラリではなく独自に実装しています。
+ * 最近のC++オプションもありますが、互換性の理由から
+ * C++98以降の機能は使用していません。
+ */
 class RandomNumberGenerator
 {
 private:
-    /* These are the same constants from MS Visual C++, which
-       has the nice property that the modulus is 2^32, thus
-       saving an explicit modulo operation
+    /* これらはMS Visual C++と同じ定数で、
+     * モジュラスが2^32であるという利点があり、
+     * 明示的なモジュロ演算を省略できます
     */
     static const uint32_t a = 214013;
     static const uint32_t c = 2531011;
-    uint32_t m_seed;
+    uint32_t m_seed;  // シード値
 
 public:
+    // デフォルトコンストラクタ
     RandomNumberGenerator() : m_seed(0) {}
+    // シードを指定するコンストラクタ
     RandomNumberGenerator(int seed) : m_seed(seed) {}
 
+    // シードを設定
     void seed(int seed)
     {
         m_seed = seed;
     }
 
+    // 0から1の間の乱数を生成
     double get_double()
     {
         m_seed = (a * m_seed + c);
@@ -155,44 +166,47 @@ public:
 };
 
 /*
-  PathNanRemover is a vertex converter that removes non-finite values
-  from the vertices list, and inserts MOVETO commands as necessary to
-  skip over them.  If a curve segment contains at least one non-finite
-  value, the entire curve segment will be skipped.
+ * PathNanRemoverは、頂点リストから非有限値（NaN）を削除し、
+ * 必要に応じてMOVETOコマンドを挿入する頂点コンバーターです。
+ * 曲線セグメントに少なくとも1つの非有限値が含まれている場合、
+ * その曲線セグメント全体がスキップされます。
  */
 template <class VertexSource>
 class PathNanRemover : protected EmbeddedQueue<4>
 {
-    VertexSource *m_source;
-    bool m_remove_nans;
-    bool m_has_codes;
-    bool valid_segment_exists;
-    bool m_last_segment_valid;
-    bool m_was_broken;
-    double m_initX;
-    double m_initY;
+    VertexSource *m_source;  // 頂点ソース
+    bool m_remove_nans;      // NaNを削除するかどうか
+    bool m_has_codes;        // パスにコードが含まれているかどうか
+    bool valid_segment_exists;  // 有効なセグメントが存在するかどうか
+    bool m_last_segment_valid;  // 最後のセグメントが有効かどうか
+    bool m_was_broken;          // パスが途切れているかどうか
+    double m_initX;             // 初期X座標
+    double m_initY;             // 初期Y座標
 
   public:
-    /* has_codes should be true if the path contains bezier curve segments, or
-     * closed loops, as this requires a slower algorithm to remove the NaNs.
-     * When in doubt, set to true.
+    /* has_codesは、パスにベジェ曲線セグメントや閉じたループが
+     * 含まれている場合にtrueに設定する必要があります。
+     * これにより、NaNを削除するためのより遅いアルゴリズムが
+     * 使用されます。不明な場合はtrueに設定してください。
      */
     PathNanRemover(VertexSource &source, bool remove_nans, bool has_codes)
         : m_source(&source), m_remove_nans(remove_nans), m_has_codes(has_codes),
           m_last_segment_valid(false), m_was_broken(false),
           m_initX(nan("")), m_initY(nan(""))
     {
-        // ignore all close/end_poly commands until after the first valid
-        // (nan-free) command is encountered
+        // 最初の有効な（NaNを含まない）コマンドが検出されるまで、
+        // すべてのclose/end_polyコマンドを無視
         valid_segment_exists = false;
     }
 
+    // パスを最初から再開
     inline void rewind(unsigned path_id)
     {
         queue_clear();
         m_source->rewind(path_id);
     }
 
+    // 次の頂点を取得
     inline unsigned vertex(double *x, double *y)
     {
         unsigned code;
@@ -202,41 +216,41 @@ class PathNanRemover : protected EmbeddedQueue<4>
         }
 
         if (m_has_codes) {
-            /* This is the slow method for when there might be curves or closed
-             * loops. */
+            /* 曲線や閉じたループが含まれる可能性がある場合の
+             * 遅いメソッド */
             if (queue_pop(&code, x, y)) {
                 return code;
             }
 
             bool needs_move_to = false;
             while (true) {
-                /* The approach here is to push each full curve
-                   segment into the queue.  If any non-finite values
-                   are found along the way, the queue is emptied, and
-                   the next curve segment is handled. */
+                /* ここでのアプローチは、各曲線セグメント全体を
+                 * キューにプッシュすることです。途中で非有限値が
+                 * 見つかった場合、キューは空になり、次の曲線
+                 * セグメントが処理されます。 */
                 code = m_source->vertex(x, y);
-                /* The vertices attached to STOP and CLOSEPOLY are never used,
-                 * so we leave them as-is even if NaN. */
+                /* STOPとCLOSEPOLYに付随する頂点は使用されないため、
+                 * NaNであってもそのままにします。 */
                 if (code == agg::path_cmd_stop) {
                     return code;
                 } else if (code == (agg::path_cmd_end_poly |
                                     agg::path_flags_close) &&
                            valid_segment_exists) {
-                    /* However, CLOSEPOLY only makes sense if a valid MOVETO
-                     * command has already been emitted. But if a NaN was
-                     * removed in the path, then we cannot close it as it is no
-                     * longer a loop. We must emulate that by inserting a
-                     * LINETO instead. */
+                    /* ただし、CLOSEPOLYは有効なMOVETOコマンドが
+                     * 既に出力されている場合にのみ意味があります。
+                     * パスでNaNが削除された場合、ループではなくなった
+                     * ため、閉じることができません。代わりにLINETOを
+                     * 挿入してエミュレートする必要があります。 */
                     if (m_was_broken) {
                         if (m_last_segment_valid && (
                                 std::isfinite(m_initX) &&
                                 std::isfinite(m_initY))) {
-                            /* Join to start if both ends are valid. */
+                            /* 両端が有効な場合は開始点に接続 */
                             queue_push(agg::path_cmd_line_to, m_initX, m_initY);
                             break;
                         } else {
-                            /* Skip the close, in case there are additional
-                             * subpaths. */
+                            /* 追加のサブパスがある場合に備えて
+                             * クローズをスキップ */
                             continue;
                         }
                         m_was_broken = false;
@@ -245,11 +259,14 @@ class PathNanRemover : protected EmbeddedQueue<4>
                         return code;
                     }
                 } else if (code == agg::path_cmd_move_to) {
-                    /* Save the initial point in order to produce the last
-                     * segment closing a loop, *if* we broke the loop. */
+                    /* ループを途切れた場合に最後のセグメントを
+                     * 閉じるために初期点を保存 */
                     m_initX = *x;
                     m_initY = *y;
+                    valid_segment_exists = true;
                     m_was_broken = false;
+                    m_last_segment_valid = true;
+                    return code;
                 }
 
                 if (needs_move_to) {

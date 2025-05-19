@@ -1,7 +1,8 @@
 /* -*- mode: c++; c-basic-offset: 4 -*- */
 
 /* _backend_agg.h
-*/
+ * AGGバックエンドのヘッダーファイル
+ */
 
 #ifndef MPL_BACKEND_AGG_H
 #define MPL_BACKEND_AGG_H
@@ -79,11 +80,11 @@ namespace py = pybind11;
  * 特に印刷や高解像度ディスプレイに適しています。
  */
 
-// a helper class to pass agg::buffer objects around.
-
+// AGGバッファオブジェクトを扱うためのヘルパークラス
 class BufferRegion
 {
   public:
+    // コンストラクタ：指定された矩形領域でバッファを初期化
     BufferRegion(const agg::rect_i &r) : rect(r)
     {
         width = r.x2 - r.x1;
@@ -92,56 +93,63 @@ class BufferRegion
         data = new agg::int8u[stride * height];
     }
 
+    // デストラクタ：バッファのメモリを解放
     virtual ~BufferRegion()
     {
         delete[] data;
     };
 
+    // バッファデータへのポインタを取得
     agg::int8u *get_data()
     {
         return data;
     }
 
+    // 矩形領域を取得
     agg::rect_i &get_rect()
     {
         return rect;
     }
 
+    // バッファの幅を取得
     int get_width()
     {
         return width;
     }
 
+    // バッファの高さを取得
     int get_height()
     {
         return height;
     }
 
+    // バッファのストライド（1行あたりのバイト数）を取得
     int get_stride()
     {
         return stride;
     }
 
   private:
-    agg::int8u *data;
-    agg::rect_i rect;
-    int width;
-    int height;
-    int stride;
+    agg::int8u *data;      // バッファデータ
+    agg::rect_i rect;      // 矩形領域
+    int width;             // 幅
+    int height;            // 高さ
+    int stride;            // ストライド
 
   private:
-    // prevent copying
+    // コピーを防止
     BufferRegion(const BufferRegion &);
     BufferRegion &operator=(const BufferRegion &);
 };
 
+// マーカーキャッシュのサイズ
 #define MARKER_CACHE_SIZE 512
 
-// the renderer
+// レンダラークラス
 class RendererAgg
 {
   public:
-
+    // 型定義
     typedef fixed_blender_rgba_plain<agg::rgba8, agg::order_rgba> fixed_blender_rgba32_plain;
     typedef agg::pixfmt_alpha_blend_rgba<fixed_blender_rgba32_plain, agg::rendering_buffer> pixfmt;
     typedef agg::renderer_base<pixfmt> renderer_base;
@@ -157,26 +165,32 @@ class RendererAgg
     typedef agg::renderer_base<agg::pixfmt_gray8> renderer_base_alpha_mask_type;
     typedef agg::renderer_scanline_aa_solid<renderer_base_alpha_mask_type> renderer_alpha_mask_type;
 
-    /* TODO: Remove facepair_t */
+    // 面のペア（塗りつぶしの有無と色）
     typedef std::pair<bool, agg::rgba> facepair_t;
 
+    // コンストラクタ：指定された幅、高さ、DPIでレンダラーを初期化
     RendererAgg(unsigned int width, unsigned int height, double dpi);
 
+    // デストラクタ
     virtual ~RendererAgg();
 
+    // レンダラーの幅を取得
     unsigned int get_width()
     {
         return width;
     }
 
+    // レンダラーの高さを取得
     unsigned int get_height()
     {
         return height;
     }
 
+    // パスを描画
     template <class PathIterator>
     void draw_path(GCAgg &gc, PathIterator &path, agg::trans_affine &trans, agg::rgba &color);
 
+    // マーカーを描画
     template <class PathIterator>
     void draw_markers(GCAgg &gc,
                       PathIterator &marker_path,
@@ -185,15 +199,18 @@ class RendererAgg
                       agg::trans_affine &trans,
                       agg::rgba face);
 
+    // テキスト画像を描画
     template <class ImageArray>
     void draw_text_image(GCAgg &gc, ImageArray &image, int x, int y, double angle);
 
+    // 画像を描画
     template <class ImageArray>
     void draw_image(GCAgg &gc,
                     double x,
                     double y,
                     ImageArray &image);
 
+    // パスコレクションを描画
     template <class PathGenerator,
               class TransformArray,
               class OffsetArray,
@@ -212,6 +229,7 @@ class RendererAgg
                               DashesVector &linestyles,
                               AntialiasedArray &antialiaseds);
 
+    // 四角形メッシュを描画
     template <class CoordinateArray, class OffsetArray, class ColorArray>
     void draw_quad_mesh(GCAgg &gc,
                         agg::trans_affine &master_transform,
@@ -224,30 +242,36 @@ class RendererAgg
                         bool antialiased,
                         ColorArray &edgecolors);
 
+    // グロー三角形を描画
     template <class PointArray, class ColorArray>
     void draw_gouraud_triangles(GCAgg &gc,
                                 PointArray &points,
                                 ColorArray &colors,
                                 agg::trans_affine &trans);
 
+    // コンテンツの範囲を取得
     agg::rect_i get_content_extents();
+    // レンダラーをクリア
     void clear();
 
+    // 指定された領域をコピー
     BufferRegion *copy_from_bbox(agg::rect_d in_rect);
+    // 領域を復元
     void restore_region(BufferRegion &reg);
+    // 指定された領域を復元
     void restore_region(BufferRegion &region, int xx1, int yy1, int xx2, int yy2, int x, int y);
 
-    unsigned int width, height;
-    double dpi;
-    size_t NUMBYTES; // the number of bytes in buffer
+    unsigned int width, height;  // レンダラーの幅と高さ
+    double dpi;                  // DPI値
+    size_t NUMBYTES;            // バッファのバイト数
 
-    agg::int8u *pixBuffer;
-    agg::rendering_buffer renderingBuffer;
+    agg::int8u *pixBuffer;      // ピクセルバッファ
+    agg::rendering_buffer renderingBuffer;  // レンダリングバッファ
 
-    agg::int8u *alphaBuffer;
-    agg::rendering_buffer alphaMaskRenderingBuffer;
-    alpha_mask_type alphaMask;
-    agg::pixfmt_gray8 pixfmtAlphaMask;
+    agg::int8u *alphaBuffer;    // アルファバッファ
+    agg::rendering_buffer alphaMaskRenderingBuffer;  // アルファマスクレンダリングバッファ
+    alpha_mask_type alphaMask;  // アルファマスク
+    agg::pixfmt_gray8 pixfmtAlphaMask;  // アルファマスク用ピクセルフォーマット
     renderer_base_alpha_mask_type rendererBaseAlphaMask;
     renderer_alpha_mask_type rendererAlphaMask;
     scanline_am scanlineAlphaMask;
@@ -520,7 +544,7 @@ RendererAgg::draw_path(GCAgg &gc, PathIterator &path, agg::trans_affine &trans, 
 template <class PathIterator>
 inline void RendererAgg::draw_markers(GCAgg &gc,
                                       PathIterator &marker_path,
-                                      agg::trans_affine &marker_trans,
+                                      agg::trans_affine &marker_path_trans,
                                       PathIterator &path,
                                       agg::trans_affine &trans,
                                       agg::rgba color)
@@ -535,12 +559,12 @@ inline void RendererAgg::draw_markers(GCAgg &gc,
     typedef agg::renderer_scanline_aa_solid<amask_ren_type> amask_aa_renderer_type;
 
     // Deal with the difference in y-axis direction
-    marker_trans *= agg::trans_affine_scaling(1.0, -1.0);
+    marker_path_trans *= agg::trans_affine_scaling(1.0, -1.0);
 
     trans *= agg::trans_affine_scaling(1.0, -1.0);
     trans *= agg::trans_affine_translation(0.5, (double)height + 0.5);
 
-    transformed_path_t marker_path_transformed(marker_path, marker_trans);
+    transformed_path_t marker_path_transformed(marker_path, marker_path_trans);
     nan_removed_t marker_path_nan_removed(marker_path_transformed, true, marker_path.has_codes());
     snap_t marker_path_snapped(marker_path_nan_removed,
                                gc.snap_mode,
@@ -552,7 +576,7 @@ inline void RendererAgg::draw_markers(GCAgg &gc,
         // If the path snapper isn't in effect, at least make sure the marker
         // at (0, 0) is in the center of a pixel.  This, importantly, makes
         // the circle markers look centered around the point they refer to.
-        marker_trans *= agg::trans_affine_translation(0.5, 0.5);
+        marker_path_trans *= agg::trans_affine_translation(0.5, 0.5);
     }
 
     transformed_path_t path_transformed(path, trans);
